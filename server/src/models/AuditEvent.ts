@@ -1,0 +1,2 @@
+import { Schema, model } from 'mongoose';
+const schema = new Schema({ userId: { type: Schema.Types.ObjectId, ref: 'User' }, action: { type: String, required: true }, resourceType: String, resourceId: String, metadata: Schema.Types.Mixed, ip: String, userAgent: String }, { timestamps: { createdAt: true, updatedAt: false } }); schema.index({ userId: 1, createdAt: -1 }); export const AuditEvent = model('AuditEvent', schema);

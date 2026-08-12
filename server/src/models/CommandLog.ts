@@ -1,0 +1,4 @@
+import { Schema, model, type Types } from 'mongoose';
+export interface ICommandLog { attemptId: Types.ObjectId; studentId: Types.ObjectId; sessionId: Types.ObjectId; command: string; stdout: string; stderr: string; exitCode?: number; durationMs?: number; timestamp: Date; }
+const schema = new Schema<ICommandLog>({ attemptId: { type: Schema.Types.ObjectId, ref: 'Attempt', required: true, index: true }, studentId: { type: Schema.Types.ObjectId, ref: 'User', required: true }, sessionId: { type: Schema.Types.ObjectId, ref: 'LabSession', required: true }, command: { type: String, required: true, maxlength: 2000 }, stdout: { type: String, maxlength: 50000, default: '' }, stderr: { type: String, maxlength: 50000, default: '' }, exitCode: Number, durationMs: Number, timestamp: { type: Date, default: Date.now } }); export const CommandLog = model<ICommandLog>('CommandLog', schema);
+

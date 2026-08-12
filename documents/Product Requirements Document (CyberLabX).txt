@@ -1,0 +1,497 @@
+Product  Requirements  Document  (PRD)  
+CyberLabX  –  Virtual  Cybersecurity  
+Laboratory
+ 
+Platform
+ 
+Version:  1.0  
+Product  Owner:  Devesh  Shukla  
+Document  Status:  Draft  
+Last  Updated:  July  2026  
+ 
+1.  Product  Overview  
+Product  Name  
+CyberLabX  
+Product  Vision  
+CyberLabX  is  a  browser-based  Virtual  Cybersecurity  Laboratory  that  enables  students  to  
+perform
+ 
+real
+ 
+cybersecurity
+ 
+experiments
+ 
+in
+ 
+an
+ 
+isolated,
+ 
+interactive,
+ 
+and
+ 
+guided
+ 
+environment
+ 
+without
+ 
+installing
+ 
+complex
+ 
+software
+ 
+such
+ 
+as
+ 
+Kali
+ 
+Linux,
+ 
+Nmap,
+ 
+Wireshark,
+ 
+or
+ 
+Docker
+ 
+on
+ 
+their
+ 
+personal
+ 
+computers.
+ 
+Instead  of  learning  cybersecurity  through  PDFs  and  screenshots,  students  gain  hands-on  
+experience
+ 
+by
+ 
+launching
+ 
+virtual
+ 
+labs,
+ 
+executing
+ 
+commands,
+ 
+analyzing
+ 
+outputs,
+ 
+completing
+ 
+guided
+ 
+tasks,
+ 
+and
+ 
+receiving
+ 
+automated
+ 
+feedback
+ 
+and
+ 
+assessments.
+ 
+CyberLabX  aims  to  modernize  cybersecurity  education  by  making  practical  learning  accessible,  
+scalable,
+ 
+and
+ 
+engaging
+ 
+for
+ 
+educational
+ 
+institutions.
+ 
+ 
+2.  Problem  Statement  
+Traditional  cybersecurity  practical  sessions  face  several  challenges:  
+●  Students  struggle  with  installing  and  configuring  cybersecurity  tools.  ●  Different  operating  systems  create  inconsistent  learning  experiences.  ●  Faculty  spend  significant  time  troubleshooting  installations  instead  of  teaching  concepts.  ●  Practical  evaluations  rely  on  screenshots  and  manual  report  checking.  ●  Students  often  copy  commands  without  understanding  the  underlying  concepts.  ●  Limited  laboratory  infrastructure  restricts  access  to  hands-on  learning.  
+These  issues  reduce  learning  effectiveness  and  make  cybersecurity  education  difficult  to  scale.  
+ 
+3.  Solution  
+CyberLabX  provides  each  student  with  an  isolated  cybersecurity  lab  accessible  directly  from  a  
+web
+ 
+browser.
+ 
+Students  can:  
+●  Launch  experiments  instantly.  ●  Use  a  browser-based  Linux  terminal.  ●  Perform  real  cybersecurity  exercises.  ●  Receive  interactive  guidance.  ●  Understand  networking  through  visual  explanations.  ●  Be  evaluated  automatically.  ●  Generate  experiment  reports  instantly.  
+Faculty  can:  
+●  Monitor  student  progress.  ●  Assign  experiments.  ●  View  reports.  ●  Export  assessment  results.  
+ 
+4.  Target  Users  
+Primary  Users  
+Undergraduate  Students  
+●  B.Tech  ●  BCA  ●  MCA  ●  Diploma  
+Learning  cybersecurity  fundamentals.  
+ 
+Faculty  
+Teaching  
+●  Ethical  Hacking  ●  Network  Security  ●  Information  Security  ●  Computer  Networks  
+ 
+Educational  Institutions  
+Engineering  colleges  
+Universities  
+Training  institutes  
+ 
+5.  User  Personas  
+Student  
+Name  
+Rahul  
+Age  
+20  
+Goals  
+●  Learn  ethical  hacking  ●  Complete  lab  experiments  ●  Prepare  for  placements  ●  Gain  practical  skills  
+Pain  Points  
+●  Installation  problems  ●  Command  confusion  ●  Lack  of  guidance  ●  Manual  report  writing  
+ 
+Faculty  
+Name  
+Dr.  Sharma  
+Goals  
+●  Conduct  practical  sessions  ●  Track  student  performance  ●  Reduce  manual  grading  ●  Standardize  experiments  
+Pain  Points  
+●  Students  have  different  environments  ●  Time  wasted  fixing  installations  ●  Manual  report  verification  
+ 
+6.  Product  Goals  
+Educational  Goals  
+●  Improve  practical  cybersecurity  learning.  
+●  Provide  standardized  lab  environments.  ●  Encourage  experimentation  without  risk.  
+Technical  Goals  
+●  Browser-based  labs.  ●  Containerized  infrastructure.  ●  Automatic  grading.  ●  Secure  isolated  environments.  
+ 
+7.  Core  Value  Proposition  
+CyberLabX  transforms  static  cybersecurity  practical  manuals  into  fully  interactive  virtual  
+laboratories
+ 
+where
+ 
+students
+ 
+perform
+ 
+real
+ 
+experiments
+ 
+instead
+ 
+of
+ 
+merely
+ 
+reading
+ 
+instructions.
+ 
+ 
+8.  Features  
+ 
+Must-Have  Features  (MVP)  
+User  Authentication  
+●  Student  login  ●  Faculty  login  ●  JWT  authentication  ●  Password  reset  
+ 
+Dashboard  
+Student  dashboard  showing  
+●  Available  experiments  ●  Completed  experiments  ●  Progress  
+●  Scores  
+ 
+Experiment  Catalog  
+List  of  experiments  
+Initially:  
+●  Network  Mapping  using  Nmap  
+ 
+Theory  Module  
+Each  experiment  includes  
+●  Aim  ●  Objectives  ●  Theory  ●  Procedure  ●  Safety  instructions  
+ 
+Interactive  Lab  
+Students  can  
+●  Launch  a  virtual  environment  ●  Access  a  Linux  terminal  ●  Execute  commands  ●  View  outputs  
+ 
+Browser  Terminal  
+Embedded  Linux  terminal  supporting  
+●  Nmap  ●  Tcpdump  ●  Basic  Linux  commands  
+ 
+Guided  Tasks  
+Example  
+Task  1  
+Find  live  hosts  
+Task  2  
+Perform  SYN  Scan  
+Task  3  
+Identify  OS  
+Task  4  
+Detect  Services  
+ 
+Automatic  Evaluation  
+System  verifies  
+●  Commands  executed  ●  Correct  sequence  ●  Task  completion  
+Generates  marks  automatically.  
+ 
+Quiz  
+MCQ  assessment  after  experiment  completion.  
+ 
+Report  Generation  
+Generate  downloadable  PDF  containing  
+●  Student  details  ●  Commands  executed  ●  Outputs  
+●  Marks  ●  Faculty  remarks  
+ 
+Faculty  Dashboard  
+Faculty  can  
+●  View  students  ●  View  reports  ●  View  scores  ●  Assign  experiments  
+ 
+Admin  Panel  
+Manage  
+●  Students  ●  Faculty  ●  Experiments  
+ 
+Nice-to-Have  Features  
+Network  Packet  Visualization  
+Animated  packet  flow  while  commands  execute.  
+ 
+AI  Learning  Assistant  
+Context-aware  assistant  that  provides  hints  without  revealing  complete  answers.  
+ 
+Interactive  Network  Topology  
+Visual  network  map  showing  
+●  Hosts  
+●  Connections  ●  Open  ports  
+ 
+Real-Time  Collaboration  
+Instructor  can  join  student  labs.  
+ 
+Voice  Explanations  
+Explain  commands  verbally.  
+ 
+Leaderboards  
+Gamified  learning.  
+ 
+Certificates  
+Automatic  certificate  generation.  
+ 
+Dark/Light  Theme  
+User  preference.  
+ 
+Experiment  Replay  
+Replay  previous  sessions.  
+ 
+Mobile  Companion  App  
+Progress  tracking.  
+ 
+None
+9.  User  Journey  
+Student  Flow  
+Landing  Page   ↓   Login   ↓   Dashboard   ↓   Choose  Experiment   ↓   Read  Theory   ↓   Launch  Virtual  Lab   ↓   Browser  Terminal  Opens   ↓   Complete  Guided  Tasks   ↓   
+None
+Automatic  Evaluation   ↓   Quiz   ↓   Report  Generated   ↓   Dashboard  Updated  
+ 
+Faculty  Flow  
+Login   ↓   Faculty  Dashboard   ↓   Assign  Experiment   ↓   Monitor  Progress   ↓   Review  Reports   
+↓   Export  Results  
+ 
+10.  MVP  Scope  
+Version  One  includes  only  one  fully  functional  cybersecurity  experiment.  
+Experiment:  
+Network  Mapping  using  Nmap  
+Students  should  be  able  to  
+●  Launch  isolated  lab  ●  Execute  Nmap  commands  ●  Understand  outputs  ●  Complete  guided  exercises  ●  Take  quiz  ●  Download  report  
+No  other  cybersecurity  experiments  will  be  included  initially.  
+ 
+11.  Success  Metrics  
+Student  Metrics  
+●  Experiment  completion  rate  ●  Quiz  scores  ●  Time  taken  ●  Number  of  retries  ●  Student  satisfaction  
+ 
+Faculty  Metrics  
+●  Reduction  in  grading  time  ●  Number  of  experiments  conducted  ●  Student  participation  
+ 
+Platform  Metrics  
+●  Daily  active  users  ●  Weekly  active  users  ●  Average  session  duration  ●  Number  of  completed  labs  ●  Report  downloads  
+ 
+12.  Non-Goals  (Version  One)  
+The  following  features  are  intentionally  excluded  from  the  first  release.  
+No  Offensive  Security  Against  Public  Systems  
+Students  cannot  scan  
+●  Public  IPs  ●  External  servers  ●  College  infrastructure  
+Only  isolated  lab  environments.  
+ 
+No  Capture  The  Flag  (CTF)  
+Competitive  hacking  is  postponed.  
+ 
+No  Multiplayer  Labs  
+One  student  per  environment.  
+ 
+No  AI  Tutor  
+Planned  for  Version  Two.  
+ 
+No  Wireshark  Experiment  
+Future  release.  
+ 
+No  SQL  Injection  Lab  
+Future  release.  
+ 
+No  Password  Cracking  
+Future  release.  
+ 
+No  Mobile  Application  
+Web  only.  
+ 
+No  Cloud  Deployment  
+Initially  hosted  on  a  local  server  or  college  infrastructure.  
+ 
+13.  Functional  Requirements  
+Students  must  be  able  to  
+●  Register/Login  ●  Launch  experiments  ●  Execute  Linux  commands  ●  Complete  tasks  ●  View  results  ●  Download  reports  
+Faculty  must  be  able  to  
+●  Assign  experiments  ●  Monitor  students  ●  View  reports  
+Admins  must  be  able  to  
+●  Manage  users  ●  Manage  experiments  ●  View  system  health  
+ 
+14.  Non-Functional  Requirements  
+●  Browser-based  ●  Responsive  UI  ●  Secure  authentication  ●  Docker-based  isolation  ●  Support  100+  concurrent  users  (target)  ●  Average  lab  startup  time  under  10  seconds  ●  HTTPS  communication  ●  Role-based  access  control  
+ 
+15.  Risks  
+Risk  Mitigation  
+High  server  load  Use  lightweight  Docker  containers  instead  of  full  VMs  
+Students  attempting  unauthorized  scans  
+Restrict  networking  to  an  isolated  lab  network  
+Long  container  startup  times  Pre-build  container  images  and  reuse  templates  
+Docker  security  concerns  Run  containers  with  restricted  privileges  and  resource  limits  
+Faculty  unfamiliar  with  the  platform  Provide  onboarding  guides  and  documentation   
+16.  Future  Roadmap  
+Version  1.1  
+●  Wireshark  Lab  ●  Tcpdump  Lab  ●  Linux  Basics  
+ 
+Version  1.2  
+●  SQL  Injection  ●  XSS  ●  CSRF  
+ 
+Version  2.0  
+●  Password  Cracking  ●  Burp  Suite  ●  Hydra  ●  Cryptography  ●  Digital  Forensics  
+ 
+Version  3.0  
+●  AI  Tutor  ●  Adaptive  Learning  ●  Packet  Visualization  ●  Capture  The  Flag  ●  Multiplayer  Labs  ●  LMS  integration  
+ 
+17.  Product  Summary  
+CyberLabX  is  an  educational  platform  designed  to  replace  traditional  cybersecurity  practical  
+manuals
+ 
+with
+ 
+an
+ 
+interactive,
+ 
+browser-based
+ 
+laboratory
+ 
+experience.
+ 
+By
+ 
+combining
+ 
+isolated
+ 
+lab
+ 
+environments,
+ 
+guided
+ 
+exercises,
+ 
+automatic
+ 
+assessment,
+ 
+and
+ 
+faculty
+ 
+management
+ 
+tools,
+ 
+it
+ 
+addresses
+ 
+the
+ 
+major
+ 
+pain
+ 
+points
+ 
+of
+ 
+current
+ 
+cybersecurity
+ 
+education.
+ 
+The
+ 
+MVP
+ 
+focuses
+ 
+on
+ 
+delivering
+ 
+one
+ 
+complete,
+ 
+high-quality
+ 
+Nmap
+ 
+experiment
+ 
+rather
+ 
+than
+ 
+many
+ 
+incomplete
+ 
+labs,
+ 
+establishing
+ 
+a
+ 
+scalable
+ 
+foundation
+ 
+for
+ 
+future
+ 
+cybersecurity
+ 
+modules.
+ 
+ 

@@ -1,0 +1,2 @@
+import { useEffect } from 'react'; import { api } from '../services/api'; import { useSessionStore } from '../store/sessionStore'; export function useSessionBootstrap() { const { loaded, setUser, setLoaded } = useSessionStore(); useEffect(() => { if (loaded) return; api.get('/auth/me').then(({ data }) => setUser(data.user)).catch(() => setUser(null)).finally(setLoaded); }, [loaded, setLoaded, setUser]); }
+

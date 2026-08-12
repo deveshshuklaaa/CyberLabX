@@ -1,0 +1,1 @@
+import { Router } from 'express'; import { getAttempt } from '../controllers/attemptController.js'; import { allowRoles, requireAuth } from '../middleware/auth.js'; export const attemptRouter = Router(); attemptRouter.get('/:id', requireAuth, allowRoles('student'), getAttempt);

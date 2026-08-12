@@ -1,0 +1,619 @@
+Frontend  Specification  Document  (FSD)  
+CyberLabX  
+Version:  1.0  
+Platform:  Web  (Desktop  First)  
+Framework:  React  +  TypeScript  +  TailwindCSS  
+ 
+1.  Design  Philosophy  
+CyberLabX  should  not  look  like  a  typical  college  ERP  portal.  
+It  should  feel  like  a  modern  cybersecurity  platform  while  remaining  approachable  for  students  
+who
+ 
+are
+ 
+new
+ 
+to
+ 
+security.
+ 
+Design  principles:  
+●  Professional  ●  Minimal  ●  Dark-first  ●  High  contrast  ●  Fast  ●  No  unnecessary  animations  ●  Accessibility  compliant  ●  Terminal-inspired,  not  "hacker  movie"  inspired  
+Avoid  the  common  mistake  of  using  neon  green  text  on  black  everywhere.  Use  those  accents  
+sparingly.
+ 
+ 
+2.  Brand  Identity  
+None
+None
+Brand  Personality  
+●  Modern  ●  Intelligent  ●  Technical  ●  Trustworthy  ●  Clean  
+Keywords  
+Security  Precision  Learning  Innovation  Professional  
+ 
+3.  Color  System  
+Primary  
+Cyber  Blue  
+#2563EB  
+Used  for  
+●  Primary  buttons  ●  Links  ●  Selected  items  
+ 
+Secondary  
+Emerald  
+None
+None
+None
+None
+#10B981  
+Used  for  
+●  Success  ●  Completed  experiments  ●  Active  labs  
+ 
+Accent  
+Cyber  Cyan  
+#06B6D4  
+Used  sparingly  for:  
+●  Progress  indicators  ●  Charts  ●  Interactive  highlights  
+ 
+Danger  
+#EF4444  
+Errors  
+ 
+Warning  
+#F59E0B  
+None
+None
+None
+None
+None
+Warnings  
+ 
+Background  
+Primary  
+#0F172A  
+Secondary  
+#1E293B  
+Cards  
+#1F2937  
+ 
+Text  
+Primary  
+#F8FAFC  
+Secondary  
+#CBD5E1  
+Muted  
+None
+None
+None
+None
+None
+None
+#64748B  
+ 
+Borders  
+#334155  
+ 
+Terminal  
+Background  
+#0B0F19  
+Prompt  
+#22C55E  
+Command  
+#FFFFFF  
+Output  
+#94A3B8  
+Error  
+None
+#EF4444  
+ 
+4.  Typography  
+Font  
+Primary  UI  
+Inter  
+Reasons  
+●  Excellent  readability  ●  Widely  supported  ●  Modern  SaaS  feel  
+ 
+Terminal  
+JetBrains  Mono  
+Reasons  
+●  Excellent  monospace  font  ●  Easy  to  distinguish  similar  characters  ●  Popular  among  developers  
+ 
+Sizes  
+Element  Size  
+Hero  48px  
+H1  36px  
+H2  30px  
+None
+None
+None
+None
+H3  24px  
+H4  20px  
+Body  16px  
+Small  14px  
+Caption  12px  
+Line  Height  
+1.5  
+ 
+5.  Grid  System  
+Desktop  
+12  Columns  
+Container  
+1440px  
+Content  
+1280px  
+ 
+6.  Spacing  System  
+Use  an  8-point  grid.  
+None
+None
+None
+None
+4  8  16  24  32  40  48  64  80  96  
+Never  use  arbitrary  spacing.  
+ 
+7.  Border  Radius  
+Buttons  
+10px  
+Cards  
+16px  
+Inputs  
+10px  
+Modals  
+None
+None
+None
+None
+None
+20px  
+Terminal  
+14px  
+ 
+8.  Shadows  
+Cards  
+0  8px  20px  rgba(0,0,0,.25)  
+Modals  
+0  20px  60px  rgba(0,0,0,.45)  
+ 
+9.  Components  
+Primary  Button  
+Height  
+48px  
+Background  
+None
+None
+None
+None
+None
+#2563EB  
+Text  
+White  
+Hover  
+#1D4ED8  
+Disabled  
+#475569  
+Loading  
+Spinner  +  Disabled  
+ 
+Secondary  Button  
+Border  
+1px  solid  #334155  
+Transparent  
+Hover  
+#1F2937  
+ 
+None
+None
+None
+None
+None
+Danger  Button  
+Background  
+#EF4444  
+ 
+Inputs  
+Height  
+48px  
+Border  
+#334155  
+Focus  
+2px  #2563EB  
+Placeholder  
+#64748B  
+ 
+Cards  
+Padding  
+None
+None
+None
+None
+None
+None
+None
+24px  
+Radius  
+16px  
+Background  
+#1F2937  
+Border  
+1px  #334155  
+ 
+Modal  
+Width  
+640px  
+Background  
+#111827  
+Overlay  
+rgba(0,0,0,.7)  
+None
+None
+None
+Escape  closes  
+Click  outside  closes  
+ 
+Sidebar  
+Collapsed  
+80px  
+Expanded  
+260px  
+ 
+10.  Dashboard  Layout  
+---------------------------------------------------   Sidebar   |   |   Top  Navbar   |   |   Content  Grid  
+None
+ |   |   Footer   ---------------------------------------------------  
+ 
+11.  Terminal  Design  
+The  terminal  is  the  centerpiece  of  the  application.  
++--------------------------------------------+   ●  ●  ●   root@cyberlab:~$   _   +--------------------------------------------+  
+Features  
+●  Copy  ●  Paste  ●  Clear  ●  Download  session  ●  Fullscreen  ●  Resize  
+ 
+None
+12.  Experiment  Page  
+Theory   Objectives   Requirements   ↓   Launch  Lab   ↓   Terminal   ↓   Tasks   ↓   Progress   ↓   Quiz   ↓   Report  
+ 
+13.  Dashboard  Cards  
+None
+Each  experiment  card  displays:  
+Icon   Title   Difficulty   Estimated  Time   Completion  Status   Start  Button  
+ 
+14.  Progress  Bar  
+Colors  
+Not  Started  
+Gray  
+Running  
+Blue  
+Completed  
+Green  
+Failed  
+Red  
+ 
+15.  Icons  
+None
+Library  
+Lucide  React  
+Reasons  
+●  Lightweight  ●  Consistent  style  ●  Tree-shakeable  
+ 
+16.  Animations  
+Library  
+Framer  Motion  
+Duration  
+200–300ms  
+Use  only  for:  
+●  Page  transitions  ●  Drawer  ●  Modal  ●  Toast  
+Avoid  excessive  animations.  
+ 
+17.  Charts  
+Library  
+Recharts  
+Used  for  
+None
+●  Student  progress  ●  Completion  rates  ●  Scores  ●  Faculty  analytics  
+ 
+18.  Responsive  Breakpoints  
+Mobile   0–767   Tablet   768–1023   Laptop   1024–1439   Desktop   1440+  
+Version  1  is  optimized  for  desktop  because  cybersecurity  labs  are  difficult  to  use  effectively  on  
+small
+ 
+screens.
+ 
+Mobile
+ 
+support
+ 
+can
+ 
+be
+ 
+limited
+ 
+to
+ 
+viewing
+ 
+dashboards
+ 
+and
+ 
+reports.
+ 
+ 
+19.  Accessibility  
+●  WCAG  AA  contrast  targets.  ●  Full  keyboard  navigation.  ●  Visible  focus  states.  ●  ARIA  labels  on  interactive  controls.  ●  Screen  reader  support  where  practical.  
+None
+JSON
+JSON
+●  Do  not  rely  on  color  alone  to  convey  status.  
+ 
+20.  Third-Party  Services  &  Integrations  
+For  the  MVP,  keep  external  dependencies  to  a  minimum.  
+Authentication  
+Internal  JWT  Service  
+Purpose:  
+●  User  authentication.  ●  Session  management.  
+Frontend  calls:  
+POST  /api/auth/login  
+Request  
+{    "email":  "student@example.com",    "password":  "password123"  }  
+Response  
+{    "user":  {      "id":  "u123",      "name":  "Devesh",      "role":  "student"  
+None
+JSON
+None
+JSON
+  }  }  
+The  JWT  is  stored  in  an  HttpOnly  cookie  by  the  server,  so  the  frontend  does  not  receive  or  store  
+it
+ 
+directly.
+ 
+ 
+User  Profile  
+GET  /api/auth/me  
+Response  
+{    "id":"u123",    "name":"Devesh",    "role":"student",    "email":"student@example.com"  }  
+ 
+Experiments  
+GET  /api/experiments  
+Response  
+[    {      "id":"exp1",  
+None
+JSON
+None
+JSON
+    "title":"Network  Mapping  with  Nmap",      "difficulty":"Easy",      "estimatedTime":45,      "status":"available"    }  ]  
+ 
+Experiment  Details  
+GET  /api/experiments/:id  
+Response  
+{    "id":"exp1",    "title":"Network  Mapping  with  Nmap",    "theory":"...",    "objectives":[...],    "tasks":[...]  }  
+ 
+Start  Lab  
+POST  /api/labs/start  
+Request  
+{  
+JSON
+None
+JSON
+None
+  "experimentId":"exp1"  }  
+Response  
+{    "sessionId":"lab123",    "status":"starting"  }  
+ 
+Lab  Status  
+GET  /api/labs/:sessionId  
+Response  
+{    "status":"running",    "terminalReady":true  }  
+ 
+Terminal  (WebSocket)  
+Endpoint  
+ws://server/api/terminal  
+Client  sends  
+JSON
+JSON
+JSON
+None
+JSON
+{    "type":"execute",    "sessionId":"lab123",    "command":"nmap  -sS  192.168.1.10"  }  
+Server  streams  
+{    "type":"output",    "data":"Starting  Nmap..."  }  
+Completion  
+{    "type":"complete",    "exitCode":0  }  
+ 
+Submit  Task  
+POST  /api/tasks/:id/submit  
+Request  
+{    "command":"nmap  -sS  192.168.1.10"  }  
+JSON
+None
+JSON
+None
+JSON
+Response  
+{    "correct":true,    "score":10,    "feedback":"SYN  scan  executed  successfully."  }  
+ 
+Quiz  
+POST  /api/quizzes/:id/submit  
+Response  
+{    "score":8,    "total":10,    "passed":true  }  
+ 
+Reports  
+GET  /api/reports/:id  
+Response  
+{    "id":"r1",    "score":92,  
+None
+JSON
+  "generatedAt":"2026-07-28T12:30:00Z",    "downloadUrl":"/api/reports/r1/download"  }  
+ 
+Faculty  Dashboard  
+GET  /api/faculty/dashboard  
+Response  
+{    "activeStudents":42,    "completedLabs":135,    "averageScore":86  }  
+ 
+21.  State  Management  
+●  TanStack  Query:  Server  state  (API  data,  caching,  retries).  ●  Zustand:  Lightweight  client  state  (theme,  sidebar  state,  active  session  metadata).  ●  Avoid  Redux  for  the  MVP;  it  adds  complexity  without  clear  benefit.  
+ 
+22.  Design  Tokens  
+Centralize  all  colors,  spacing,  typography,  border  radii,  and  shadows  in  a  shared  design  token  
+file
+ 
+(or
+ 
+Tailwind
+ 
+theme).
+ 
+Components
+ 
+should
+ 
+never
+ 
+hardcode
+ 
+values
+ 
+like
+ #2563EB directly.  This  
+ensures
+ 
+future
+ 
+rebranding
+ 
+or
+ 
+theming
+ 
+requires
+ 
+changing
+ 
+a
+ 
+single
+ 
+source
+ 
+of
+ 
+truth
+ 
+rather
+ 
+than
+ 
+editing
+ 
+dozens
+ 
+of
+ 
+components.
+ 
+ 
+23.  Frontend  Performance  Guidelines  
+●  Lazy-load  experiment  pages.  ●  Code-split  the  terminal  and  analytics  modules.  ●  Optimize  icon  imports  (tree-shaking).  ●  Virtualize  long  tables  (student  lists,  logs).  ●  Debounce  search  inputs.  ●  Cache  experiment  metadata  with  TanStack  Query.  ●  Show  skeleton  loaders  instead  of  blocking  spinners  where  possible.  
+ 
+Architectural  Recommendation  
+There  is  one  change  I  would  make  before  writing  any  UI.  
+Do  not  design  the  interface  around  "pages."  Design  it  around  application  states .  
+For  example,  the  Lab  page  isn't  a  single  screen—it  has  distinct  states:  
+●  Lab  not  started.  ●  Lab  starting.  ●  Lab  running.  ●  Lab  disconnected.  ●  Lab  reconnecting.  ●  Lab  completed.  ●  Lab  expired.  ●  Lab  failed.  
+Likewise,  the  Experiment  page  can  be  in  draft,  available,  locked,  assigned,  or  completed  states.  
+Designing  these  states  first  will  produce  a  more  resilient  interface  than  simply  creating  static  
+page
+ 
+mockups.
+ 
+It
+ 
+also
+ 
+gives
+ 
+frontend
+ 
+developers
+ 
+a
+ 
+clear
+ 
+contract
+ 
+for
+ 
+how
+ 
+the
+ 
+UI
+ 
+should
+ 
+behave
+ 
+as
+ 
+the
+ 
+backend
+ 
+responds
+ 
+to
+ 
+different
+ 
+conditions.
+ 
+This
+ 
+state-driven
+ 
+approach
+ 
+is
+ 
+common
+ 
+in
+ 
+mature
+ 
+SaaS
+ 
+products
+ 
+and
+ 
+will
+ 
+make
+ 
+CyberLabX
+ 
+significantly
+ 
+easier
+ 
+to
+ 
+maintain
+ 
+as
+ 
+new
+ 
+experiments
+ 
+and
+ 
+features
+ 
+are
+ 
+added.
+ 
+ 

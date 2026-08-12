@@ -1,0 +1,2 @@
+import { Router } from 'express'; import { adminDashboard, facultyDashboard } from '../controllers/dashboardController.js'; import { allowRoles, requireAuth } from '../middleware/auth.js'; export const dashboardRouter = Router(); dashboardRouter.get('/faculty/dashboard', requireAuth, allowRoles('faculty', 'admin'), facultyDashboard); dashboardRouter.get('/admin/dashboard', requireAuth, allowRoles('admin'), adminDashboard);
+

@@ -1,0 +1,29 @@
+=== CyberLabX Target Container Health Verification ===
+
+✅  Docker daemon reachable.
+
+Creating container "cyberlabx-health-verify" from "cyberlabx-target:latest" ...
+  CapDrop: ALL
+  CapAdd:  NET_BIND_SERVICE
+  PidsLimit: 128
+  Memory: 512 MB
+  SecurityOpt: no-new-privileges:true
+
+Container started: e5a04610d9e2
+Waiting for health check ...
+
+Health status : unhealthy
+Running       : false
+PID           : 0
+CapDrop       : ["ALL"]
+CapAdd        : ["NET_BIND_SERVICE"]
+Published Ports: {}
+
+--- Regression check: NET_RAW alone (should fail) ---
+
+Regression container started: 768486af169b
+✅  Regression confirmed: NET_RAW alone → FAIL — container exited (ExitCode=255, lastHealthLog="(none)")
+
+Cleaning up ...
+Done.
+

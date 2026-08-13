@@ -9,13 +9,37 @@ const docker = process.platform === 'win32'
 
 const safeName = (value: string) => value.replace(/[^a-zA-Z0-9_.-]/g, '').slice(-24);
 
-const resources = {
+/* Shared resource limits applied to every lab container */
+const baseResources = {
   Memory: env.LAB_MEMORY_MB * 1024 * 1024,
   NanoCpus: env.LAB_CPU_NANOS,
   PidsLimit: 128,
+  SecurityOpt: ['no-new-privileges:true'],
+};
+
+/**
+ * Student (Kali) container:
+ *   – NET_RAW is needed for raw-socket tools (nmap SYN scan, ping, etc.)
+ */
+const studentResources = {
+  ...baseResources,
   CapDrop: ['ALL'],
   CapAdd: ['NET_RAW'],
-  SecurityOpt: ['no-new-privileges:true'],
+};
+
+/**
+ * Target container:
+ *   – NET_BIND_SERVICE is needed so lighttpd can bind to port 80
+ *   – SETUID / SETGID are needed because lighttpd drops privileges
+ *     after binding (standard daemon behaviour). These are
+ *     privilege-*dropping* calls, not escalation, so they are safe
+ *     even with no-new-privileges.
+ *   – NET_RAW is NOT required (target doesn't run scans)
+ */
+const targetResources = {
+  ...baseResources,
+  CapDrop: ['ALL'],
+  CapAdd: ['NET_BIND_SERVICE', 'SETUID', 'SETGID'],
 };
 
 /* ------------------------------------------------------------------ */
@@ -28,17 +52,43 @@ async function removeQuietly(fn: () => Promise<unknown>) {
 /* ------------------------------------------------------------------ */
 /*  Wait for a container to become healthy                            */
 /* ------------------------------------------------------------------ */
-async function waitForHealthy(containerId: string, timeoutMs = 30_000) {
+async function waitForHealthy(containerId: string, timeoutMs = 60_000) {
   const finish = Date.now() + timeoutMs;
   while (Date.now() < finish) {
-    const state = (await docker.getContainer(containerId).inspect()).State;
-    if (state.Health?.Status === 'healthy' || (state.Running && !state.Health)) return;
-    if (state.Health?.Status === 'unhealthy' || !state.Running) {
-      throw new Error('Target container failed its health check.');
+    const info = await docker.getContainer(containerId).inspect();
+    const state = info.State;
+    const healthStatus = state.Health?.Status;
+
+    /* Container exited — fail fast with diagnostics */
+    if (!state.Running) {
+      const exitCode = state.ExitCode;
+      const lastLog = state.Health?.Log?.slice(-1)[0]?.Output?.trim() ?? '(no health log)';
+      throw new Error(
+        `Target container exited before becoming healthy. ` +
+        `ExitCode=${exitCode}, lastHealthLog="${lastLog}", ` +
+        `containerName="${info.Name}"`
+      );
     }
+
+    /* Success */
+    if (healthStatus === 'healthy' || !state.Health) return;
+
+    /* Definitive failure from Docker's own retry logic */
+    if (healthStatus === 'unhealthy') {
+      const lastLog = state.Health?.Log?.slice(-1)[0]?.Output?.trim() ?? '(no health log)';
+      throw new Error(
+        `Target container health check failed. ` +
+        `status="unhealthy", lastHealthLog="${lastLog}", ` +
+        `containerName="${info.Name}"`
+      );
+    }
+
+    /* healthStatus === 'starting' — keep waiting */
     await new Promise(resolve => setTimeout(resolve, 1000));
   }
-  throw new Error('Target container timed out while starting.');
+  throw new Error(
+    `Target container timed out after ${timeoutMs}ms while waiting for healthy status.`
+  );
 }
 
 /* ------------------------------------------------------------------ */
@@ -69,20 +119,28 @@ export async function provisionLab(input: { attemptId: string; studentId: string
       Labels: { 'com.cyberlabx.managed': 'true', 'com.cyberlabx.attempt': input.attemptId },
     });
 
-    const common = {
-      HostConfig: { ...resources, NetworkMode: networkName },
-      Labels: { 'com.cyberlabx.managed': 'true', 'com.cyberlabx.attempt': input.attemptId },
-    };
+    const labels = { 'com.cyberlabx.managed': 'true', 'com.cyberlabx.attempt': input.attemptId };
 
     target = await docker.createContainer({
-      Image: env.TARGET_IMAGE, name: targetName, Hostname: 'nmap-target', ...common,
+      Image: env.TARGET_IMAGE,
+      name: targetName,
+      Hostname: 'nmap-target',
+      HostConfig: { ...targetResources, NetworkMode: networkName },
+      Labels: labels,
     });
     await target.start();
     await waitForHealthy(target.id);
 
     student = await docker.createContainer({
-      Image: env.LAB_IMAGE, name: studentName, Hostname: 'kali-student',
-      Cmd: ['/bin/bash'], Tty: true, OpenStdin: true, StdinOnce: false, ...common,
+      Image: env.LAB_IMAGE,
+      name: studentName,
+      Hostname: 'kali-student',
+      Cmd: ['/bin/bash'],
+      Tty: true,
+      OpenStdin: true,
+      StdinOnce: false,
+      HostConfig: { ...studentResources, NetworkMode: networkName },
+      Labels: labels,
     });
     await student.start();
 

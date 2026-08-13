@@ -53,7 +53,7 @@ describe('CompletionPanel', () => {
         const link = screen.getByTestId('download-report');
         expect(link).toBeInTheDocument();
         expect(link).toHaveTextContent('Download Report');
-        expect(link).toHaveAttribute('href', 'http://localhost:5000/api/api/reports/abc123/download');
+        expect(link).toHaveAttribute('href', 'http://localhost:5000/api/reports/abc123/download');
         expect(link).toHaveAttribute('target', '_blank');
     });
 

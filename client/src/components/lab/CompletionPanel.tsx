@@ -16,8 +16,9 @@ export function CompletionPanel({
     downloadUrl,
     reportError,
 }: Props) {
+    const origin = (api.defaults.baseURL ?? '').replace(/\/api\/?$/, '');
     const fullDownloadUrl = downloadUrl
-        ? `${api.defaults.baseURL}${downloadUrl}`
+        ? `${origin}${downloadUrl}`
         : null;
 
     return (

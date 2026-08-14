@@ -69,7 +69,7 @@ import { submitQuiz } from '../controllers/quizController.js';
 /* Helper to build Express-like req/res */
 function mockReqRes(body: Record<string, unknown>, userId = 'student-1') {
     const user: any = { _id: userId, firstName: 'Demo', lastName: 'Student' };
-    const req: any = { body, user, params: {}, cookies: {} };
+    const req: any = { body, user, params: { id: '64b000000000000000000004' }, cookies: {} };
     const res: any = {
         statusCode: 200,
         body: null as any,
@@ -82,7 +82,7 @@ function mockReqRes(body: Record<string, unknown>, userId = 'student-1') {
 
 /* Experiment fixture */
 const experimentFixture: any = {
-    _id: 'exp-1',
+    _id: '64b000000000000000000004',
     tasks: [
         { id: 't1', marks: 10, order: 1, verification: [] },
     ],
@@ -93,13 +93,14 @@ const experimentFixture: any = {
         ],
     },
 };
+const attemptId = '64b000000000000000000001';
 
 /* Attempt fixture — tasks completed */
 function makeAttempt() {
     return {
-        _id: 'attempt-1',
+        _id: attemptId,
         studentId: 'student-1',
-        experimentId: 'exp-1',
+        experimentId: '64b000000000000000000004',
         labSessionId: 'session-1',
         status: 'running',
         currentTaskIndex: 1, // all tasks done
@@ -121,12 +122,12 @@ describe('submitQuiz — lab completion flow', () => {
         (Attempt.findOne as Mock).mockResolvedValue(attempt);
         (Experiment.findById as Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(experimentFixture) });
         (generateReport as Mock).mockResolvedValue({ _id: 'report-1', score: 15, totalMarks: 20 });
-        const session: any = { _id: 'session-1', attemptId: 'attempt-1', status: 'running', save: vi.fn() };
+        const session: any = { _id: 'session-1', attemptId, status: 'running', save: vi.fn() };
         (LabSession.findOne as Mock).mockResolvedValue(session);
         (cleanupLab as Mock).mockResolvedValue(undefined);
 
         const { req, res, next } = mockReqRes({
-            attemptId: 'attempt-1',
+            attemptId,
             answers: [
                 { questionId: 'q1', selectedOption: 0 },
                 { questionId: 'q2', selectedOption: 2 },
@@ -157,12 +158,12 @@ describe('submitQuiz — lab completion flow', () => {
         (Attempt.findOne as Mock).mockResolvedValue(attempt);
         (Experiment.findById as Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(experimentFixture) });
         (generateReport as Mock).mockRejectedValue(new Error('PDF engine crash'));
-        const session: any = { _id: 'session-1', attemptId: 'attempt-1', status: 'running', save: vi.fn() };
+        const session: any = { _id: 'session-1', attemptId, status: 'running', save: vi.fn() };
         (LabSession.findOne as Mock).mockResolvedValue(session);
         (cleanupLab as Mock).mockResolvedValue(undefined);
 
         const { req, res, next } = mockReqRes({
-            attemptId: 'attempt-1',
+            attemptId,
             answers: [{ questionId: 'q1', selectedOption: 0 }, { questionId: 'q2', selectedOption: 1 }],
         });
 
@@ -188,7 +189,7 @@ describe('submitQuiz — lab completion flow', () => {
         (Experiment.findById as Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(experimentFixture) });
 
         const { req, res, next } = mockReqRes({
-            attemptId: 'attempt-1',
+            attemptId,
             answers: [],
         });
 

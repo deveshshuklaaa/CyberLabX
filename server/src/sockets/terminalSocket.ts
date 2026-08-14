@@ -11,7 +11,7 @@ import { getShellStream } from '../services/labEngine.js';
 /*  Per-session terminal state                                        */
 /* ------------------------------------------------------------------ */
 interface TerminalEntry {
-    stream: NodeJS.ReadWriteStream;
+    stream: NodeJS.WritableStream;
     sockets: Set<string>;
     /** Rolling window of recent output (for command-log context). */
     output: string;
@@ -19,6 +19,10 @@ interface TerminalEntry {
     commandBuf: string;
     /** Timestamp when the user started typing the current command. */
     commandStartedAt: number | null;
+    /** The latest server-side command log receiving terminal output. */
+    activeCommandLogId?: string;
+    outputSinceCommand: string;
+    capturingCommandOutput: boolean;
 }
 
 const streams = new Map<string, TerminalEntry>();
@@ -39,6 +43,17 @@ function stripAnsi(data: string): string {
 function cookieValue(cookie = '', name: string) {
     return cookie.split(';').map(item => item.trim())
         .find(item => item.startsWith(`${name}=`))?.slice(name.length + 1);
+}
+
+function validSessionId(value: unknown): value is string {
+    return typeof value === 'string' && /^[a-f\d]{24}$/i.test(value);
+}
+
+function persistCapturedOutput(item: TerminalEntry) {
+    if (!item.activeCommandLogId) return;
+    void CommandLog.findByIdAndUpdate(item.activeCommandLogId, {
+        $set: { stdout: item.outputSinceCommand.slice(-50_000) },
+    }).catch(() => { /* best-effort evidence capture */ });
 }
 
 /* ------------------------------------------------------------------ */
@@ -62,7 +77,11 @@ export function attachTerminalSocket(io: Server) {
 
     io.on('connection', (socket: Socket) => {
         /* ── terminal:join ─────────────────────────────────────────── */
-        socket.on('terminal:join', async ({ labSessionId }: { labSessionId: string }) => {
+        socket.on('terminal:join', async (payload: unknown) => {
+            const labSessionId = (payload as { labSessionId?: unknown })?.labSessionId;
+            if (!validSessionId(labSessionId)) {
+                return socket.emit('terminal:error', { message: 'Invalid lab session.' });
+            }
             const user = socket.data.user;
             const session = await LabSession.findOne({
                 _id: labSessionId,
@@ -78,17 +97,23 @@ export function attachTerminalSocket(io: Server) {
 
             if (!item) {
                 try {
-                    const stream = await getShellStream(session.studentContainerId);
-                    item = { stream, sockets: new Set(), output: '', commandBuf: '', commandStartedAt: null };
+                    const shell = await getShellStream(session.studentContainerId);
+                    item = { stream: shell.input, sockets: new Set(), output: '', commandBuf: '', commandStartedAt: null, outputSinceCommand: '', capturingCommandOutput: false };
                     streams.set(key, item);
 
-                    stream.on('data', (data: Buffer) => {
+                    shell.output.on('data', (data: Buffer) => {
                         const text = data.toString('utf8');
                         item!.output = (item!.output + text).slice(-50_000);
+                        if (item!.capturingCommandOutput) {
+                            item!.outputSinceCommand = (item!.outputSinceCommand + text).slice(-50_000);
+                            persistCapturedOutput(item!);
+                        }
                         for (const id of item!.sockets) io.to(id).emit('terminal:output', text);
                     });
 
-                    stream.on('close', () => streams.delete(key));
+                    shell.output.on('end', () => streams.delete(key));
+                    shell.output.on('close', () => streams.delete(key));
+                    shell.output.on('error', () => streams.delete(key));
                 } catch {
                     return socket.emit('terminal:error', { message: 'Unable to attach to the terminal.' });
                 }
@@ -96,11 +121,16 @@ export function attachTerminalSocket(io: Server) {
 
             item.sockets.add(socket.id);
             socket.join(`lab:${key}`);
-            socket.emit('terminal:ready');
+            const restored = Boolean(item.output);
+            if (restored) socket.emit('terminal:output', item.output);
+            socket.emit('terminal:ready', { restored });
         });
 
         /* ── terminal:input ────────────────────────────────────────── */
-        socket.on('terminal:input', async ({ labSessionId, data }: { labSessionId: string; data: string }) => {
+        socket.on('terminal:input', async (payload: unknown) => {
+            const labSessionId = (payload as { labSessionId?: unknown })?.labSessionId;
+            const data = (payload as { data?: unknown })?.data;
+            if (!validSessionId(labSessionId)) return socket.emit('terminal:error', { message: 'Invalid lab session.' });
             if (typeof data !== 'string' || data.length > 4096) return;
 
             const user = socket.data.user;
@@ -110,7 +140,7 @@ export function attachTerminalSocket(io: Server) {
                 status: 'running',
             });
             const item = streams.get(labSessionId);
-            if (!session || !item) {
+            if (!session || !item || !item.sockets.has(socket.id)) {
                 return socket.emit('terminal:error', { message: 'Terminal session is unavailable.' });
             }
 
@@ -146,7 +176,10 @@ export function attachTerminalSocket(io: Server) {
                         const durationMs = startedAt ? Date.now() - startedAt : undefined;
                         const attempt = await Attempt.findById(session.attemptId);
                         if (attempt) {
-                            await CommandLog.create({
+                            item.capturingCommandOutput = true;
+                            item.outputSinceCommand = '';
+                            item.activeCommandLogId = undefined;
+                            const log = await CommandLog.create({
                                 attemptId: attempt._id,
                                 studentId: user._id,
                                 sessionId: session._id,
@@ -155,6 +188,10 @@ export function attachTerminalSocket(io: Server) {
                                 stderr: '',
                                 durationMs,
                             }).catch(() => { /* best-effort logging */ });
+                            if (log) {
+                                item.activeCommandLogId = String(log._id);
+                                persistCapturedOutput(item);
+                            }
                         }
                     }
                     continue;

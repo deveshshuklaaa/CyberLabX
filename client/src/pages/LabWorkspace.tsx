@@ -56,12 +56,15 @@ export function LabWorkspace() {
     return (
       <section className="panel p-8">
         <h1 className="text-xl font-semibold">Restoring lab workspace…</h1>
-        <p className="mt-2 text-slate-400">Fetching saved progress.</p>
+        <p className="mt-2 text-muted">Fetching saved progress.</p>
       </section>
     );
   }
 
   const task = experiment.tasks[index];
+  const targetHostname = lab?.targetHostname ?? experiment.lab.target.hostname;
+  const targetDisplayName = lab?.targetDisplayName ?? experiment.lab.target.displayName;
+  const terminalPrompt = lab?.terminalPrompt ?? experiment.lab.terminal.promptLabel;
 
   const submit = async () => {
     if (!attemptId || !task || !command.trim()) {
@@ -71,7 +74,6 @@ export function LabWorkspace() {
       const { data } = await api.post<TaskSubmitResponse>(`/tasks/${task.id}/submit`, {
         attemptId,
         command,
-        output,
       });
       setRuleResults(data.result.ruleResults ?? []);
       setTaskFeedback(data.result.feedback ?? '');
@@ -114,11 +116,11 @@ export function LabWorkspace() {
       {/* ── Header ──────────────────────────────────────────────── */}
       <div className="mb-5 flex items-center justify-between gap-4">
         <div>
-          <p className="text-cyan">LAB WORKSPACE · {lab?.status ?? 'connecting'}</p>
-          <h1 className="text-xl font-bold">{experiment.title}</h1>
+          <p className="text-sm font-semibold tracking-wide text-brand">LAB WORKSPACE · {lab?.status ?? 'connecting'}</p>
+          <h1 className="text-xl font-bold text-ink">{experiment.title}</h1>
         </div>
         <button
-          className="button-secondary gap-2 text-red-200"
+          className="button-secondary gap-2 text-danger"
           onClick={async () => { await api.post(`/labs/${labSessionId}/stop`); navigate('/'); }}
         >
           <X size={16} />Stop lab
@@ -136,39 +138,39 @@ export function LabWorkspace() {
               className={`mt-3 rounded-lg border p-3 ${itemIndex < index
                   ? 'border-success/40 bg-success/10'
                   : itemIndex === index
-                    ? 'border-cyan'
+                    ? 'border-brand bg-brand/5'
                     : 'border-line opacity-60'
                 }`}
             >
               <div className="flex gap-2 font-semibold text-sm">
                 {itemIndex < index && <Check size={16} className="text-success" />}
                 {item.order}. {item.title}
-                <span className="ml-auto text-slate-400">{item.marks} pts</span>
+                <span className="ml-auto text-muted">{item.marks} pts</span>
               </div>
               {itemIndex === index && (
                 <>
-                  <p className="mt-2 text-sm text-slate-300">{item.description}</p>
-                  <p className="mt-2 text-sm text-cyan">Hint: {item.hints[0]}</p>
+                  <p className="mt-2 text-sm text-muted">{item.description}</p>
+                  <p className="mt-2 text-sm text-brand">Hint: {item.hints[0]}</p>
                 </>
               )}
             </div>
           ))}
-          <p className="mt-5 text-sm text-slate-400">
-            Only scan <code className="text-cyan">nmap-target</code> inside this private network.
+          <p className="mt-5 text-sm text-muted">
+            Only interact with <code className="font-semibold text-brand">{targetHostname}</code> ({targetDisplayName}) inside this private network.
           </p>
         </aside>
 
         {/* ── Terminal + verification ───────────────────────────── */}
         <div className="panel overflow-hidden">
-          <div className="flex items-center gap-2 border-b border-line bg-slate-900 px-4 py-3 text-sm">
+          <div className="flex items-center gap-2 border-b border-slate-700 bg-[#151923] px-4 py-3 text-sm text-slate-100">
             <SquareTerminal size={17} className="text-success" />
-            kali@student-lab
-            <span className="ml-auto text-emerald-200">
-              Target: {lab?.targetHostname ?? 'nmap-target'}
+            {terminalPrompt}
+            <span className="ml-auto text-emerald-300">
+              Target: {targetHostname}
             </span>
           </div>
           <div className="bg-terminal">
-            <Terminal labSessionId={labSessionId} onOutput={append} />
+            <Terminal labSessionId={labSessionId} targetHostname={targetHostname} onOutput={append} />
           </div>
 
           {task && (
@@ -179,13 +181,13 @@ export function LabWorkspace() {
                   className="field font-mono text-sm"
                   value={command}
                   onChange={event => setCommand(event.target.value)}
-                  placeholder="nmap -sS nmap-target"
+                  placeholder={`Enter the command used against ${targetHostname}`}
                 />
                 <button className="button gap-2" onClick={submit}>
                   <Send size={16} />Verify
                 </button>
               </div>
-              {notice && <p className="mt-3 text-sm text-slate-300">{notice}</p>}
+              {notice && <p className="mt-3 text-sm text-muted">{notice}</p>}
               <RuleResults ruleResults={ruleResults} feedback={taskFeedback} />
             </div>
           )}
@@ -196,7 +198,7 @@ export function LabWorkspace() {
       {index >= experiment.tasks.length && !completion && (
         <section className="panel mt-6 p-6">
           <h2 className="flex gap-2 text-lg font-semibold">
-            <ClipboardCheck className="text-cyan" />Knowledge check
+            <ClipboardCheck className="text-brand" />Knowledge check
           </h2>
           {experiment.quiz.questions.map(question => (
             <fieldset className="mt-5" key={question.id}>

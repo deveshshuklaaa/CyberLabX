@@ -1,7 +1,9 @@
 import Docker from 'dockerode';
+import { Transform } from 'node:stream';
 import { env } from '../config/env.js';
 import { LabSession } from '../models/LabSession.js';
 import { Attempt } from '../models/Attempt.js';
+import type { LabDefinition } from '../models/Experiment.js';
 
 const docker = process.platform === 'win32'
   ? new Docker({ socketPath: '//./pipe/docker_engine' })
@@ -41,6 +43,38 @@ const targetResources = {
   CapDrop: ['ALL'],
   CapAdd: ['NET_BIND_SERVICE', 'SETUID', 'SETGID'],
 };
+
+/*
+ * Experiments select stable image keys; only this server-side registry maps
+ * those keys to Docker images.  Database content can never supply an image
+ * reference, registry, tag, volume, or other Docker option directly.
+ */
+const approvedImages = {
+  'kali-nmap': env.LAB_IMAGE,
+  'nmap-http-target': env.TARGET_IMAGE,
+} as const;
+
+export function resolveLabDefinition(lab: unknown) {
+  if (!lab || typeof lab !== 'object') {
+    throw new Error('Experiment is missing a valid lab definition. Run the experiment data migration before starting this lab.');
+  }
+
+  const definition = lab as Partial<LabDefinition>;
+  if (definition.profile !== 'shell-target-v1') {
+    throw new Error(`Unsupported lab profile: ${String(definition.profile)}`);
+  }
+  if (!definition.target || !definition.terminal) {
+    throw new Error('Experiment lab definition is incomplete. Run the experiment data migration before starting this lab.');
+  }
+
+  const studentImage = approvedImages[definition.studentImageKey as keyof typeof approvedImages];
+  const targetImage = approvedImages[definition.target.imageKey as keyof typeof approvedImages];
+  if (!studentImage || !targetImage) {
+    throw new Error('Lab definition references an unsupported image key.');
+  }
+
+  return { studentImage, targetImage };
+}
 
 /* ------------------------------------------------------------------ */
 /*  Idempotent helper — never throws                                  */
@@ -101,7 +135,8 @@ export async function assertDockerReady() {
 /* ------------------------------------------------------------------ */
 /*  Provision a new lab environment                                   */
 /* ------------------------------------------------------------------ */
-export async function provisionLab(input: { attemptId: string; studentId: string }) {
+export async function provisionLab(input: { attemptId: string; studentId: string; lab: LabDefinition }) {
+  const { studentImage, targetImage } = resolveLabDefinition(input.lab);
   const tag = safeName(input.attemptId);
   const networkName = `${env.LAB_NETWORK_PREFIX}-${tag}`;
   const studentName = `cyberlabx-student-${tag}`;
@@ -122,9 +157,9 @@ export async function provisionLab(input: { attemptId: string; studentId: string
     const labels = { 'com.cyberlabx.managed': 'true', 'com.cyberlabx.attempt': input.attemptId };
 
     target = await docker.createContainer({
-      Image: env.TARGET_IMAGE,
+      Image: targetImage,
       name: targetName,
-      Hostname: 'nmap-target',
+      Hostname: input.lab.target.hostname,
       HostConfig: { ...targetResources, NetworkMode: networkName },
       Labels: labels,
     });
@@ -132,7 +167,7 @@ export async function provisionLab(input: { attemptId: string; studentId: string
     await waitForHealthy(target.id);
 
     student = await docker.createContainer({
-      Image: env.LAB_IMAGE,
+      Image: studentImage,
       name: studentName,
       Hostname: 'kali-student',
       Cmd: ['/bin/bash'],
@@ -189,6 +224,63 @@ export async function inspectLab(session: { studentContainerId?: string }) {
 }
 
 /* ------------------------------------------------------------------ */
+/*  Docker exec output demultiplexing                                  */
+/* ------------------------------------------------------------------ */
+/*
+ * Docker Desktop can send exec output in Docker's eight-byte framed
+ * format even when the exec request asks for a TTY.  Pass ordinary PTY
+ * output through untouched, but remove only confirmed Docker framing.
+ */
+class DockerExecOutputDemuxer extends Transform {
+  private pending = Buffer.alloc(0);
+  private multiplexed: boolean | undefined;
+
+  private isFrameHeader(buffer: Buffer) {
+    return buffer.length >= 8 &&
+      (buffer[0] === 0 || buffer[0] === 1 || buffer[0] === 2) &&
+      buffer[1] === 0 && buffer[2] === 0 && buffer[3] === 0;
+  }
+
+  override _transform(chunk: Buffer, _encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+    this.pending = Buffer.concat([this.pending, chunk]);
+
+    if (this.multiplexed === undefined) {
+      if (this.pending.length < 8) return callback();
+      this.multiplexed = this.isFrameHeader(this.pending);
+      if (!this.multiplexed) {
+        this.push(this.pending);
+        this.pending = Buffer.alloc(0);
+        return callback();
+      }
+    }
+
+    if (!this.multiplexed) {
+      this.push(this.pending);
+      this.pending = Buffer.alloc(0);
+      return callback();
+    }
+
+    while (this.pending.length >= 8) {
+      const payloadLength = this.pending.readUInt32BE(4);
+      if (this.pending.length < 8 + payloadLength) break;
+      this.push(this.pending.subarray(8, 8 + payloadLength));
+      this.pending = this.pending.subarray(8 + payloadLength);
+    }
+    callback();
+  }
+
+  override _flush(callback: (error?: Error | null) => void) {
+    if (this.multiplexed === false && this.pending.length) this.push(this.pending);
+    this.pending = Buffer.alloc(0);
+    callback();
+  }
+}
+
+export function createDockerExecOutputDemuxer() {
+  return new DockerExecOutputDemuxer();
+}
+
+/* ------------------------------------------------------------------ */
 /*  Get an interactive shell stream into a container                  */
 /* ------------------------------------------------------------------ */
 export async function getShellStream(containerId: string) {
@@ -196,7 +288,13 @@ export async function getShellStream(containerId: string) {
     Cmd: ['/bin/bash', '-l'],
     AttachStdin: true, AttachStdout: true, AttachStderr: true, Tty: true,
   });
-  return exec.start({ hijack: true, stdin: true });
+  const input = await exec.start({ hijack: true, stdin: true });
+  const output = createDockerExecOutputDemuxer();
+  input.on('data', chunk => output.write(chunk));
+  input.on('end', () => output.end());
+  input.on('close', () => output.end());
+  input.on('error', error => output.destroy(error));
+  return { input, output };
 }
 
 /* ------------------------------------------------------------------ */

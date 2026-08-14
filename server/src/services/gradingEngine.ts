@@ -37,9 +37,12 @@ const ruleHandlers: Record<string, RuleHandler> = {
       return { type: 'command', passed: false, message: `Expected command to start with "${tool}".` };
     }
 
-    const missing = (rule.requiredArgs ?? []).filter(
-      arg => !tokens.includes(arg.toLowerCase()),
-    );
+    const missing = (rule.requiredArgs ?? []).filter(arg => {
+      const required = arg.toLowerCase();
+      // Nmap's aggressive mode includes OS and service/version detection.
+      const aggressiveEquivalent = (required === '-o' || required === '-sv') && tokens.includes('-a');
+      return !tokens.includes(required) && !aggressiveEquivalent;
+    });
     if (missing.length > 0) {
       return { type: 'command', passed: false, message: `Missing required flag(s): ${missing.join(', ')}.` };
     }
@@ -75,6 +78,10 @@ const ruleHandlers: Record<string, RuleHandler> = {
 
   /* ---------- service_detection: verify service string ---------- */
   service_detection(rule, _command, output) {
+    const tokens = _command.trim().toLowerCase().split(/\s+/);
+    if (!tokens.includes('-sv') && !tokens.includes('-a')) {
+      return { type: 'service_detection', passed: false, message: 'Service/version detection flag (-sV or -A) was not used.' };
+    }
     const service = (rule.requiredService ?? '').toLowerCase();
     const found = output.toLowerCase().includes(service);
 

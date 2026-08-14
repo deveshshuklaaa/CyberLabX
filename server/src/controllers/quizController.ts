@@ -7,12 +7,13 @@ import { generateReport } from '../services/reportService.js';
 import { cleanupLab } from '../services/labEngine.js';
 
 export const submitQuiz = asyncHandler(async (req, res) => {
+    const experimentId = z.string().regex(/^[a-f\d]{24}$/i).parse(req.params.id);
     const input = z.object({
-        attemptId: z.string(),
+        attemptId: z.string().regex(/^[a-f\d]{24}$/i),
         answers: z.array(z.object({
             questionId: z.string(),
             selectedOption: z.number().int().min(0).max(10),
-        })),
+        })).max(50),
     }).parse(req.body);
 
     const attempt = await Attempt.findOne({
@@ -25,6 +26,7 @@ export const submitQuiz = asyncHandler(async (req, res) => {
     const experiment = await Experiment.findById(attempt.experimentId)
         .select('+quiz.questions.correctOption');
     if (!experiment) return res.status(404).json({ message: 'Experiment not found.' });
+    if (String(experiment._id) !== experimentId) return res.status(404).json({ message: 'Experiment not found.' });
 
     if (attempt.currentTaskIndex < experiment.tasks.length) {
         return res.status(409).json({ message: 'Complete the guided tasks before the quiz.' });

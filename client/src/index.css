@@ -2,5 +2,17 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@layer base { body { @apply m-0 min-w-[320px] bg-ink text-slate-50 font-sans; } button, input { font: inherit; } }
-@layer components { .panel { @apply rounded-xl border border-line bg-card shadow-xl shadow-slate-950/10; } .button { @apply inline-flex items-center justify-center rounded-lg bg-cyber px-4 py-2 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60; } .button-secondary { @apply inline-flex items-center justify-center rounded-lg border border-line bg-slate-800 px-4 py-2 font-semibold text-slate-100 transition hover:bg-slate-700; } .field { @apply w-full rounded-lg border border-line bg-slate-900 px-3 py-2 text-slate-100 outline-none placeholder:text-slate-500 focus:border-cyan; } .label { @apply mb-1 block text-sm font-medium text-slate-300; } }
+
+@layer base {
+  body { @apply m-0 min-w-[320px] bg-canvas font-sans text-ink; }
+  button, input { font: inherit; }
+  a { @apply text-link; }
+}
+
+@layer components {
+  .panel { @apply rounded-xl border border-line bg-surface shadow-sm; }
+  .button { @apply inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark active:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60; }
+  .button-secondary { @apply inline-flex items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 font-semibold text-ink transition hover:border-brand hover:bg-[#FDF4F4] hover:text-brand-dark; }
+  .field { @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15; }
+  .label { @apply mb-1 block text-sm font-medium text-ink; }
+}

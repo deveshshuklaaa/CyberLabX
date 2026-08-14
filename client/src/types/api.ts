@@ -12,16 +12,23 @@ export interface Question {
     id: string; question: string; options: string[]; explanation: string; marks: number;
 }
 
+export interface LabDefinition {
+    profile: 'shell-target-v1';
+    studentImageKey: 'kali-nmap';
+    target: { imageKey: 'nmap-http-target'; hostname: string; displayName: string };
+    terminal: { promptLabel: string };
+}
+
 export interface Experiment {
     _id: string; title: string; slug: string; description: string; aim: string;
     objectives: string[]; theorySections: { title: string; content: string }[];
     procedureSections: string[]; difficulty: string; estimatedTimeMinutes: number;
-    tasks: Task[]; quiz: { questions: Question[] }; taskCount?: number;
+    lab: LabDefinition; tasks: Task[]; quiz: { questions: Question[] }; taskCount?: number;
 }
 
 export interface LabSession {
     id: string; attemptId?: string; status: string; targetIp?: string;
-    targetHostname?: string; expiresAt: string; failureReason?: string;
+    targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; expiresAt: string; failureReason?: string;
 }
 
 /* ── Backend response types ────────────────────────────────────── */

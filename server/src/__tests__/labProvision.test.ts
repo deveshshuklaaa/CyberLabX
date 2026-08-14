@@ -41,6 +41,13 @@ vi.mock('../models/Attempt.js', () => ({ Attempt: { updateMany: vi.fn() } }));
 
 import { provisionLab } from '../services/labEngine.js';
 
+const nmapLab = {
+    profile: 'shell-target-v1',
+    studentImageKey: 'kali-nmap',
+    target: { imageKey: 'nmap-http-target', hostname: 'nmap-target', displayName: 'Controlled Nmap target' },
+    terminal: { promptLabel: 'kali@student-lab' },
+} as const;
+
 /* ================================================================== */
 /*  Helper: build a fake network name from attemptId                  */
 /* ================================================================== */
@@ -104,7 +111,7 @@ describe('provisionLab — container capabilities (regression)', () => {
     });
 
     it('gives the target container NET_BIND_SERVICE, not NET_RAW', async () => {
-        await provisionLab({ attemptId: 'testAttempt123', studentId: 'student1' });
+        await provisionLab({ attemptId: 'testAttempt123', studentId: 'student1', lab: nmapLab });
 
         expect(capturedCalls.length).toBe(2);
 
@@ -124,7 +131,7 @@ describe('provisionLab — container capabilities (regression)', () => {
     });
 
     it('both containers share security hardening settings', async () => {
-        await provisionLab({ attemptId: 'testAttempt456', studentId: 'student2' });
+        await provisionLab({ attemptId: 'testAttempt456', studentId: 'student2', lab: nmapLab });
 
         for (const config of capturedCalls) {
             const hc = (config as any).HostConfig;
@@ -138,12 +145,34 @@ describe('provisionLab — container capabilities (regression)', () => {
 
     it('target and student containers are on the same private network', async () => {
         const attemptId = 'netTestAttempt';
-        await provisionLab({ attemptId, studentId: 'student3' });
+        await provisionLab({ attemptId, studentId: 'student3', lab: nmapLab });
 
         const expected = fakeNetworkName(attemptId);
         for (const config of capturedCalls) {
             expect((config as any).HostConfig.NetworkMode).toBe(expected);
         }
+    });
+
+    it('rejects unsupported image keys before creating Docker resources', async () => {
+        await expect(provisionLab({
+            attemptId: 'bad-image',
+            studentId: 'student4',
+            lab: { ...nmapLab, studentImageKey: 'untrusted-image' } as any,
+        })).rejects.toThrow('unsupported image key');
+
+        expect(mocks.mockCreateNetwork).not.toHaveBeenCalled();
+        expect(mocks.mockCreateContainer).not.toHaveBeenCalled();
+    });
+
+    it('rejects a missing lab definition before creating Docker resources', async () => {
+        await expect(provisionLab({
+            attemptId: 'missing-lab',
+            studentId: 'student5',
+            lab: undefined as any,
+        })).rejects.toThrow('missing a valid lab definition');
+
+        expect(mocks.mockCreateNetwork).not.toHaveBeenCalled();
+        expect(mocks.mockCreateContainer).not.toHaveBeenCalled();
     });
 });
 
@@ -189,7 +218,7 @@ describe('provisionLab — waitForHealthy diagnostics', () => {
         });
 
         await expect(
-            provisionLab({ attemptId: 'deadbeef', studentId: 's1' })
+            provisionLab({ attemptId: 'deadbeef', studentId: 's1', lab: nmapLab })
         ).rejects.toThrow(/ExitCode=1/);
     });
 
@@ -219,7 +248,7 @@ describe('provisionLab — waitForHealthy diagnostics', () => {
         });
 
         await expect(
-            provisionLab({ attemptId: 'abc', studentId: 's1' })
+            provisionLab({ attemptId: 'abc', studentId: 's1', lab: nmapLab })
         ).rejects.toThrow(/unhealthy.*nc -z 127\.0\.0\.1 80 FAILED/);
     });
 });

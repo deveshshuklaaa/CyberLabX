@@ -1,2 +1,7 @@
-import { useQuery } from '@tanstack/react-query'; import { api } from '../services/api'; export function FacultyDashboard() { const { data, isLoading } = useQuery({ queryKey: ['faculty-dashboard'], queryFn: () => api.get('/faculty/dashboard').then(r => r.data) }); return <section><p className="text-cyan">FACULTY DASHBOARD</p><h1 className="mt-1 text-3xl font-bold">Learning progress overview</h1>{isLoading ? <p className="mt-6 text-slate-400">Loading metrics…</p> : <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(data.metrics).map(([key, value]) => <div key={key} className="panel p-5"><p className="text-3xl font-bold">{String(value)}</p><p className="mt-1 capitalize text-slate-400">{key.replace(/([A-Z])/g, ' $1')}</p></div>)}</div>}</section>; }
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../services/api';
 
+export function FacultyDashboard() {
+  const { data, isLoading } = useQuery({ queryKey: ['faculty-dashboard'], queryFn: () => api.get('/faculty/dashboard').then(r => r.data) });
+  return <section><p className="text-sm font-semibold tracking-wide text-brand">FACULTY DASHBOARD</p><h1 className="mt-1 text-3xl font-bold text-ink">Learning progress overview</h1>{isLoading ? <p className="mt-6 text-muted">Loading metrics…</p> : <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{Object.entries(data.metrics).map(([key, value]) => <div key={key} className="panel border-t-4 border-t-brand p-5"><p className="text-3xl font-bold text-ink">{String(value)}</p><p className="mt-1 capitalize text-muted">{key.replace(/([A-Z])/g, ' $1')}</p></div>)}</div>}</section>;
+}

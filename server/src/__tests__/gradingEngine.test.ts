@@ -58,6 +58,11 @@ describe('command rule', () => {
         const r = validateTask(task, 'nmap -sS 10.0.0.2');
         expect(r.passed).toBe(true);
     });
+
+    it('does not give SYN-scan credit to a plain Nmap command', () => {
+        const r = validateTask(task, 'nmap nmap-target');
+        expect(r.passed).toBe(false);
+    });
 });
 
 /* ================================================================== */
@@ -113,6 +118,12 @@ describe('service_detection rule', () => {
         const r = validateTask(task, 'nmap -sV nmap-target', output);
         expect(r.passed).toBe(true);
     });
+
+    it('requires -sV or -A rather than accepting plain Nmap output', () => {
+        const output = '80/tcp open  http  Apache httpd 2.4.52';
+        expect(validateTask(task, 'nmap nmap-target', output).passed).toBe(false);
+        expect(validateTask(task, 'nmap -A nmap-target', output).passed).toBe(true);
+    });
 });
 
 /* ================================================================== */
@@ -153,6 +164,11 @@ describe('os_detection rule', () => {
         const r = validateTask(task, 'nmap -A nmap-target', 'PORT STATE SERVICE\n80/tcp open http');
         expect(r.passed).toBe(false);
     });
+
+    it('treats -A as satisfying an OS command requirement', () => {
+        const commandTask = makeTask({ verification: [{ type: 'command', tool: 'nmap', requiredArgs: ['-O'] }] });
+        expect(validateTask(commandTask, 'nmap -A nmap-target').passed).toBe(true);
+    });
 });
 
 /* ================================================================== */
@@ -188,7 +204,7 @@ describe('combined command + output rules', () => {
         const r = validateTask(task, 'nmap -sS nmap-target', output);
         expect(r.passed).toBe(false);
         expect(r.ruleResults[0].passed).toBe(false); // wrong flag
-        expect(r.ruleResults[1].passed).toBe(true);  // service found
+        expect(r.ruleResults[1].passed).toBe(false); // service flag also required
     });
 });
 

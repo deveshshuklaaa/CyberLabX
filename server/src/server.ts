@@ -5,9 +5,11 @@ import { env } from './config/env.js';
 import { connectDatabase } from './config/db.js';
 import { attachTerminalSocket } from './sockets/terminalSocket.js';
 import { expireLabs, recoverOrphanedLabs } from './services/labEngine.js';
+import { migrateLegacyExperimentLabDefinitions } from './services/experimentMigrations.js';
 
 async function main() {
     await connectDatabase();
+    await migrateLegacyExperimentLabDefinitions();
 
     // Recover any orphaned lab sessions/Docker resources from prior crash
     await recoverOrphanedLabs().catch(err =>

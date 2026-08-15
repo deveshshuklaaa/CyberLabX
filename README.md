@@ -25,11 +25,14 @@ CyberLabX is an isolated, browser-based cybersecurity lab. V1 teaches Network Ma
    docker compose ps
    ```
 
-4. Build the two lab images:
+4. Build the lab images:
 
    ```powershell
    docker build -t cyberlabx-kali:latest -f docker/kali/Dockerfile docker/kali
    docker build -t cyberlabx-target:latest -f docker/target/Dockerfile docker/target
+   docker build -t cyberlabx-dos-attacker:latest -f docker/dos-attacker/Dockerfile docker/dos-attacker
+   docker build -t cyberlabx-dos-victim:latest -f docker/dos-victim/Dockerfile docker/dos-victim
+   docker build -t cyberlabx-dos-client:latest -f docker/dos-client/Dockerfile docker/dos-client
    ```
 
 5. Seed optional local development accounts (only inserts missing documents):
@@ -61,5 +64,5 @@ For an end-to-end smoke test, start a lab, run `ip addr`, then use Nmap only aga
 
 - The browser never receives Docker credentials or direct Docker API access.
 - Lab networks are created with Docker `Internal: true`; no public ports are published.
-- Only server-side allowlisted images/configuration are used, with CPU, memory, PID, capability, and no-new-privileges restrictions.
+- Only server-side allowlisted images/configuration are used, with CPU, memory, PID, capability, and no-new-privileges restrictions. The DoS lab's student shell is an unprivileged user; only a localhost controller can send its fixed 60 SYN probes at 10pps to `victim`.
 - Authentication uses an HttpOnly cookie; protected APIs validate ownership on every student resource.

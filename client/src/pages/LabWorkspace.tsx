@@ -62,8 +62,11 @@ export function LabWorkspace() {
   }
 
   const task = experiment.tasks[index];
-  const targetHostname = lab?.targetHostname ?? experiment.lab.target.hostname;
-  const targetDisplayName = lab?.targetDisplayName ?? experiment.lab.target.displayName;
+  const experimentVictim = experiment.lab.profile === 'shell-target-v1'
+    ? experiment.lab.target
+    : experiment.lab.resources.find(resource => resource.role === 'victim')!;
+  const targetHostname = lab?.targetHostname ?? experimentVictim.hostname;
+  const targetDisplayName = lab?.targetDisplayName ?? experimentVictim.displayName;
   const terminalPrompt = lab?.terminalPrompt ?? experiment.lab.terminal.promptLabel;
 
   const submit = async () => {

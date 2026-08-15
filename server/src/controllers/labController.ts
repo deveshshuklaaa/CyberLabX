@@ -6,7 +6,7 @@ import { LabSession } from '../models/LabSession.js';
 import { assertDockerReady, cleanupLab, inspectLab, provisionLab, resolveLabDefinition } from '../services/labEngine.js';
 import { env } from '../config/env.js';
 
-function sessionResponse(session: { _id: unknown; attemptId?: unknown; status: string; targetIp?: string; targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; expiresAt: Date; failureReason?: string }) {
+function sessionResponse(session: { _id: unknown; attemptId?: unknown; status: string; targetIp?: string; targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: unknown[]; expiresAt: Date; failureReason?: string }) {
   return {
     id: session._id,
     attemptId: session.attemptId,
@@ -15,6 +15,7 @@ function sessionResponse(session: { _id: unknown; attemptId?: unknown; status: s
     targetHostname: session.targetHostname,
     targetDisplayName: session.targetDisplayName,
     terminalPrompt: session.terminalPrompt,
+    resources: session.resources,
     expiresAt: session.expiresAt,
     failureReason: session.failureReason,
   };
@@ -42,9 +43,10 @@ export const startLab = asyncHandler(async (req, res) => {
     const lab = await provisionLab({ attemptId: String(attempt._id), studentId: String(req.user!._id), lab: experiment.lab });
     Object.assign(session, lab, {
       status: 'running',
-      targetHostname: experiment.lab.target.hostname,
-      targetDisplayName: experiment.lab.target.displayName,
+      targetHostname: experiment.lab.profile === 'shell-target-v1' ? experiment.lab.target.hostname : 'victim',
+      targetDisplayName: experiment.lab.profile === 'shell-target-v1' ? experiment.lab.target.displayName : 'Controlled HTTP victim',
       terminalPrompt: experiment.lab.terminal.promptLabel,
+      terminalUser: experiment.lab.profile === 'dos-analysis-v1' ? 'student' : undefined,
       startedAt: new Date(),
       lastHeartbeatAt: new Date(),
     });

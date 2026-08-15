@@ -47,12 +47,35 @@ const ruleHandlers: Record<string, RuleHandler> = {
       return { type: 'command', passed: false, message: `Missing required flag(s): ${missing.join(', ')}.` };
     }
 
-    /* Verify the intended target appears in the command */
-    if (!tokens.includes('nmap-target') && !tokens.some(t => /^(\d{1,3}\.){3}\d{1,3}$/.test(t))) {
-      return { type: 'command', passed: false, message: 'Command must target the lab host (nmap-target).' };
+    /* Definitions may constrain a hostname, but never permit arbitrary targets. */
+    const requiredTarget = (rule.requiredTarget ?? 'nmap-target').toLowerCase();
+    if (!tokens.some(token => token === requiredTarget || token === `http://${requiredTarget}` || token === `https://${requiredTarget}` || token.startsWith(`http://${requiredTarget}/`) || token.startsWith(`https://${requiredTarget}/`)) && !tokens.some(t => requiredTarget === 'nmap-target' && /^(\d{1,3}\.){3}\d{1,3}$/.test(t))) {
+      return { type: 'command', passed: false, message: `Command must target the lab host (${requiredTarget}).` };
     }
 
     return { type: 'command', passed: true, message: 'Command syntax verified.' };
+  },
+
+  output_contains(rule, _command, output) {
+    const required = rule.requiredOutput ?? [];
+    const missing = required.filter(value => !output.toLowerCase().includes(value.toLowerCase()));
+    return { type: 'output_contains', passed: missing.length === 0, message: missing.length ? `Expected terminal output: ${missing.join(', ')}.` : 'Server-captured command output verified.' };
+  },
+
+  bounded_network_activity(rule, command, output) {
+    const tokens = command.trim().split(/\s+/);
+    const expectedTool = rule.tool ?? 'dos-sim';
+    const validInvocation = tokens.length === 1 && (tokens[0] === expectedTool || tokens[0] === `/usr/local/bin/${expectedTool}`);
+    const evidence = output.includes('CONTROLLED_SYN_COMPLETE') && output.includes('count=60') && output.includes('rate=10pps') && output.includes('target=victim');
+    return { type: 'bounded_network_activity', passed: validInvocation && evidence, message: validInvocation && evidence ? 'Verified 60 SYN probes at the server-approved 10 packets/second rate to victim only.' : 'Run the approved dos-sim command and wait for its bounded completion record.' };
+  },
+
+  packet_analysis(rule, command, output) {
+    const tool = (rule.tool ?? 'tshark').toLowerCase();
+    const startsWithTool = command.trim().toLowerCase().split(/\s+/)[0] === tool;
+    const required = rule.requiredOutput ?? ['victim', 'syn'];
+    const missing = required.filter(value => !output.toLowerCase().includes(value.toLowerCase()));
+    return { type: 'packet_analysis', passed: startsWithTool && missing.length === 0, message: startsWithTool && missing.length === 0 ? 'Captured traffic analysis identifies the approved SYN pattern.' : `Use ${tool} and identify: ${missing.join(', ') || 'the required traffic pattern'}.` };
   },
 
   /* ---------- scan_result: verify port/state in output ---------- */

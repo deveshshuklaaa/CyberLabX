@@ -32,9 +32,10 @@ const streams = new Map<string, TerminalEntry>();
 /*  Removes CSI sequences (arrow keys, cursor movement, color, etc.)  */
 /* ------------------------------------------------------------------ */
 const ANSI_RE = /\x1b\[[0-9;]*[A-Za-z]|\x1b\].*?(?:\x07|\x1b\\)|\x1b[()][0-9A-Za-z]/g;
+const BRACKETED_PASTE_RE = /\x1b\[(?:200|201)~/g;
 
-function stripAnsi(data: string): string {
-    return data.replace(ANSI_RE, '');
+export function sanitizeTerminalInputForLogging(data: string): string {
+    return data.replace(BRACKETED_PASTE_RE, '').replace(ANSI_RE, '');
 }
 
 /* ------------------------------------------------------------------ */
@@ -97,7 +98,7 @@ export function attachTerminalSocket(io: Server) {
 
             if (!item) {
                 try {
-                    const shell = await getShellStream(session.studentContainerId);
+                    const shell = await getShellStream(session.studentContainerId, session.terminalUser);
                     item = { stream: shell.input, sockets: new Set(), output: '', commandBuf: '', commandStartedAt: null, outputSinceCommand: '', capturingCommandOutput: false };
                     streams.set(key, item);
 
@@ -148,7 +149,7 @@ export function attachTerminalSocket(io: Server) {
             item.stream.write(data);
 
             // Strip ANSI escapes before processing for command logging
-            const clean = stripAnsi(data);
+            const clean = sanitizeTerminalInputForLogging(data);
 
             for (const ch of clean) {
                 if (ch === '\x03') {

@@ -43,6 +43,7 @@ const targetResources = {
   CapDrop: ['ALL'],
   CapAdd: ['NET_BIND_SERVICE', 'SETUID', 'SETGID'],
 };
+const clientResources = { ...baseResources, CapDrop: ['ALL'] };
 
 /*
  * Experiments select stable image keys; only this server-side registry maps
@@ -52,6 +53,9 @@ const targetResources = {
 const approvedImages = {
   'kali-nmap': env.LAB_IMAGE,
   'nmap-http-target': env.TARGET_IMAGE,
+  'kali-dos-attacker': env.DOS_ATTACKER_IMAGE,
+  'dos-http-victim': env.DOS_VICTIM_IMAGE,
+  'dos-legitimate-client': env.DOS_CLIENT_IMAGE,
 } as const;
 
 export function resolveLabDefinition(lab: unknown) {
@@ -60,6 +64,21 @@ export function resolveLabDefinition(lab: unknown) {
   }
 
   const definition = lab as Partial<LabDefinition>;
+  if (definition.profile === 'dos-analysis-v1') {
+    const resources = (definition as Extract<LabDefinition, { profile: 'dos-analysis-v1' }>).resources;
+    if (!Array.isArray(resources) || resources.length !== 3) throw new Error('DoS lab definition requires three approved resources.');
+    const expected = ['student:kali-dos-attacker:attacker', 'victim:dos-http-victim:victim', 'legitimate-client:dos-legitimate-client:legitimate-client'];
+    if (!resources.every((resource, index) => `${resource.role}:${resource.imageKey}:${resource.hostname}` === expected[index])) throw new Error('Lab definition references an unsupported resource configuration.');
+    const resolved = resources.map(resource => ({
+      role: resource.role,
+      imageKey: resource.imageKey,
+      hostname: resource.hostname,
+      displayName: resource.displayName,
+      image: approvedImages[resource.imageKey],
+    }));
+    if (resolved.some(resource => !resource.image)) throw new Error('Lab definition references an unsupported image key.');
+    return { profile: 'dos-analysis-v1' as const, resources: resolved };
+  }
   if (definition.profile !== 'shell-target-v1') {
     throw new Error(`Unsupported lab profile: ${String(definition.profile)}`);
   }
@@ -73,7 +92,7 @@ export function resolveLabDefinition(lab: unknown) {
     throw new Error('Lab definition references an unsupported image key.');
   }
 
-  return { studentImage, targetImage };
+  return { profile: 'shell-target-v1' as const, studentImage, targetImage };
 }
 
 /* ------------------------------------------------------------------ */
@@ -136,7 +155,7 @@ export async function assertDockerReady() {
 /*  Provision a new lab environment                                   */
 /* ------------------------------------------------------------------ */
 export async function provisionLab(input: { attemptId: string; studentId: string; lab: LabDefinition }) {
-  const { studentImage, targetImage } = resolveLabDefinition(input.lab);
+  const resolved = resolveLabDefinition(input.lab);
   const tag = safeName(input.attemptId);
   const networkName = `${env.LAB_NETWORK_PREFIX}-${tag}`;
   const studentName = `cyberlabx-student-${tag}`;
@@ -145,6 +164,7 @@ export async function provisionLab(input: { attemptId: string; studentId: string
   let network: Docker.Network | undefined;
   let student: Docker.Container | undefined;
   let target: Docker.Container | undefined;
+  const created: Docker.Container[] = [];
 
   try {
     network = await docker.createNetwork({
@@ -156,10 +176,43 @@ export async function provisionLab(input: { attemptId: string; studentId: string
 
     const labels = { 'com.cyberlabx.managed': 'true', 'com.cyberlabx.attempt': input.attemptId };
 
+    if (resolved.profile === 'dos-analysis-v1') {
+      const containers: Record<string, Docker.Container> = {};
+      const names: Record<string, string> = {};
+      for (const resource of resolved.resources) {
+        const name = `cyberlabx-${resource.role}-${tag}`;
+        names[resource.role] = name;
+        const resourceLabels = { ...labels, 'com.cyberlabx.role': resource.role };
+        const isStudent = resource.role === 'student';
+        const container = await docker.createContainer({
+          Image: resource.image, name, Hostname: resource.hostname,
+          ...(isStudent ? { Tty: true, OpenStdin: true, StdinOnce: false } : {}),
+          HostConfig: { ...(isStudent ? studentResources : resource.role === 'victim' ? targetResources : clientResources), NetworkMode: networkName },
+          Labels: resourceLabels,
+        });
+        containers[resource.role] = container;
+        created.push(container);
+        await container.start();
+        if (resource.role === 'victim') await waitForHealthy(container.id);
+      }
+      const victim = containers.victim;
+      const attacker = containers.student;
+      const victimIp = (await victim.inspect()).NetworkSettings.Networks[networkName]?.IPAddress;
+      if (!victimIp) throw new Error('Victim IP was not allocated.');
+      return {
+        networkName, studentContainerId: attacker.id, targetContainerId: victim.id,
+        studentContainerName: names.student, targetContainerName: names.victim, targetIp: victimIp,
+        resources: resolved.resources.map(resource => ({ role: resource.role, containerId: containers[resource.role].id, name: names[resource.role], hostname: resource.hostname, displayName: resource.displayName })),
+      };
+    }
+
+    const { studentImage, targetImage } = resolved;
+    const nmapLab = input.lab as Extract<LabDefinition, { profile: 'shell-target-v1' }>;
+
     target = await docker.createContainer({
       Image: targetImage,
       name: targetName,
-      Hostname: input.lab.target.hostname,
+      Hostname: nmapLab.target.hostname,
       HostConfig: { ...targetResources, NetworkMode: networkName },
       Labels: labels,
     });
@@ -185,6 +238,7 @@ export async function provisionLab(input: { attemptId: string; studentId: string
 
     return { networkName, studentContainerId: student.id, targetContainerId: target.id, studentContainerName: studentName, targetContainerName: targetName, targetIp };
   } catch (error) {
+    for (const container of created) await removeQuietly(() => container.remove({ force: true }));
     if (student) await removeQuietly(() => student!.remove({ force: true }));
     if (target) await removeQuietly(() => target!.remove({ force: true }));
     if (network) await removeQuietly(() => network!.remove());
@@ -199,7 +253,11 @@ export async function cleanupLab(session: {
   studentContainerId?: string;
   targetContainerId?: string;
   networkName?: string;
+  resources?: { containerId: string }[];
 }) {
+  for (const resource of session.resources ?? []) {
+    await removeQuietly(() => docker.getContainer(resource.containerId).remove({ force: true }));
+  }
   if (session.studentContainerId) {
     await removeQuietly(() => docker.getContainer(session.studentContainerId!).remove({ force: true }));
   }
@@ -283,9 +341,10 @@ export function createDockerExecOutputDemuxer() {
 /* ------------------------------------------------------------------ */
 /*  Get an interactive shell stream into a container                  */
 /* ------------------------------------------------------------------ */
-export async function getShellStream(containerId: string) {
+export async function getShellStream(containerId: string, user?: string) {
   const exec = await docker.getContainer(containerId).exec({
     Cmd: ['/bin/bash', '-l'],
+    ...(user ? { User: user } : {}),
     AttachStdin: true, AttachStdout: true, AttachStderr: true, Tty: true,
   });
   const input = await exec.start({ hijack: true, stdin: true });

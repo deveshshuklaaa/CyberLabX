@@ -23,7 +23,10 @@ export function AppLayout() {
     </header>
     <main className="mx-auto max-w-7xl px-5 py-8"><Outlet /></main>
     <footer className="mt-8 bg-footer text-footer-text">
-      <div className="mx-auto max-w-7xl px-5 py-4 text-sm">CyberLabX · Controlled cybersecurity learning environments</div>
+      <div className="mx-auto max-w-7xl px-4 py-4 text-center text-xs leading-6 sm:px-5 sm:text-sm">
+        <p>Guided By: Prof. Harsh Bhor</p>
+        <p>Developed By: Devesh Shukla, Divya JI & Arvind Shekhawat.</p>
+      </div>
     </footer>
   </div>;
 }

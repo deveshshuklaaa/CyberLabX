@@ -1,0 +1,13 @@
+#!/bin/bash
+set -eu
+for arg in "$@"; do
+  case "$arg" in
+    eth0|tcp.flags.syn|==|1|'tcp.flags.syn == 1'|-i|-Y|-T|fields) ;;
+    *) echo 'This lab exposes only the approved read-only SYN analysis on eth0.' >&2; exit 64 ;;
+  esac
+done
+count=$(grep -c . /var/run/cyberlabx/syn.log 2>/dev/null || true)
+echo 'CyberLabX tshark summary: interface=eth0 filter=tcp.flags.syn == 1 target=victim'
+echo "Captured SYN-related frames: ${count}; approved simulation configuration: count=60 rate=10pps"
+tail -n 8 /var/run/cyberlabx/syn.log 2>/dev/null || true
+echo 'Analysis: packet-rate spike with repeated SYN traffic to victim; possible incomplete TCP handshakes.'

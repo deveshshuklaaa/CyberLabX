@@ -10,6 +10,9 @@ vi.mock('../config/env.js', () => ({
         LAB_NETWORK_PREFIX: 'cyberlabx-lab',
         LAB_IMAGE: 'cyberlabx-kali:latest',
         TARGET_IMAGE: 'cyberlabx-target:latest',
+        DOS_ATTACKER_IMAGE: 'cyberlabx-dos-attacker:latest',
+        DOS_VICTIM_IMAGE: 'cyberlabx-dos-victim:latest',
+        DOS_CLIENT_IMAGE: 'cyberlabx-dos-client:latest',
         REPORT_DIR: './reports',
         LAB_TTL_MINUTES: 45,
         DOCKER_HOST: '',
@@ -46,7 +49,16 @@ const nmapLab = {
     studentImageKey: 'kali-nmap',
     target: { imageKey: 'nmap-http-target', hostname: 'nmap-target', displayName: 'Controlled Nmap target' },
     terminal: { promptLabel: 'kali@student-lab' },
-} as const;
+} as any;
+const dosLab = {
+    profile: 'dos-analysis-v1',
+    resources: [
+        { role: 'student', imageKey: 'kali-dos-attacker', hostname: 'attacker', displayName: 'Attacker workstation' },
+        { role: 'victim', imageKey: 'dos-http-victim', hostname: 'victim', displayName: 'Controlled HTTP victim' },
+        { role: 'legitimate-client', imageKey: 'dos-legitimate-client', hostname: 'legitimate-client', displayName: 'Normal traffic generator' },
+    ],
+    terminal: { promptLabel: 'student@attacker' },
+} as any;
 
 /* ================================================================== */
 /*  Helper: build a fake network name from attemptId                  */
@@ -173,6 +185,31 @@ describe('provisionLab — container capabilities (regression)', () => {
 
         expect(mocks.mockCreateNetwork).not.toHaveBeenCalled();
         expect(mocks.mockCreateContainer).not.toHaveBeenCalled();
+    });
+});
+
+describe('provisionLab — multi-container DoS lab', () => {
+    let capturedCalls: Record<string, unknown>[] = [];
+    beforeEach(() => {
+        vi.clearAllMocks();
+        capturedCalls = [];
+        mocks.mockCreateNetwork.mockResolvedValue({ id: 'mock-network-id', remove: mocks.mockRemove });
+        mocks.mockCreateContainer.mockImplementation((opts: Record<string, unknown>) => {
+            capturedCalls.push(opts);
+            const networkName = (opts as any).HostConfig.NetworkMode;
+            return { id: `container-${capturedCalls.length}`, start: vi.fn().mockResolvedValue(undefined), inspect: vi.fn().mockResolvedValue({ Name: '/mock', State: { Running: true, Health: { Status: 'healthy' } }, NetworkSettings: { Networks: { [networkName]: { IPAddress: '172.20.0.2' } } } }), remove: mocks.mockRemove };
+        });
+        mocks.mockGetContainer.mockReturnValue({ inspect: vi.fn().mockResolvedValue({ Name: '/mock', State: { Running: true, Health: { Status: 'healthy' } } }), remove: mocks.mockRemove });
+    });
+    it('creates only allowlisted roles on the same internal network and exposes the attacker terminal', async () => {
+        const result = await provisionLab({ attemptId: 'dosAttempt123', studentId: 'student1', lab: dosLab });
+        expect(capturedCalls).toHaveLength(3);
+        expect(capturedCalls.map(call => (call as any).Hostname)).toEqual(['attacker', 'victim', 'legitimate-client']);
+        expect(capturedCalls.map(call => (call as any).Image)).toEqual(['cyberlabx-dos-attacker:latest', 'cyberlabx-dos-victim:latest', 'cyberlabx-dos-client:latest']);
+        expect(capturedCalls.every(call => (call as any).HostConfig.NetworkMode === fakeNetworkName('dosAttempt123'))).toBe(true);
+        expect(capturedCalls.every(call => !(call as any).HostConfig.PortBindings && !(call as any).HostConfig.Binds)).toBe(true);
+        expect(result.studentContainerId).toBe('container-1');
+        expect(result.resources?.map(resource => resource.role)).toEqual(['student', 'victim', 'legitimate-client']);
     });
 });
 

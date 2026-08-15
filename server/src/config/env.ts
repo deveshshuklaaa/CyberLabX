@@ -64,6 +64,10 @@ const schema = z.object({
     .string()
     .default('cyberlabx-target:latest'),
 
+  DOS_ATTACKER_IMAGE: z.string().default('cyberlabx-dos-attacker:latest'),
+  DOS_VICTIM_IMAGE: z.string().default('cyberlabx-dos-victim:latest'),
+  DOS_CLIENT_IMAGE: z.string().default('cyberlabx-dos-client:latest'),
+
   REPORT_DIR: z
     .string()
     .default('./reports'),

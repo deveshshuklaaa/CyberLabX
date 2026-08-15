@@ -15,8 +15,8 @@ export function StudentDashboard() {
     <p className="mt-2 text-muted">Continue building practical skills in safe, isolated labs.</p>
     <div className="mt-8 grid gap-4 sm:grid-cols-3">
       <Stat icon={<Target/>} label="Available labs" value={data?.experiments.length ?? '—'}/>
-      <Stat icon={<BookOpen/>} label="Learning path" value="Nmap V1"/>
-      <Stat icon={<Clock/>} label="Typical session" value="45 min"/>
+      <Stat icon={<BookOpen/>} label="Learning path" value="Multi-lab V1"/>
+      <Stat icon={<Clock/>} label="Typical session" value="35–45 min"/>
     </div>
     <h2 className="mt-10 text-xl font-semibold text-ink">Available experiments</h2>
     {isLoading && <p className="mt-4 text-muted">Loading experiments…</p>}
@@ -25,7 +25,7 @@ export function StudentDashboard() {
       {data?.experiments.map(experiment => <article className="panel border-t-4 border-t-brand p-6" key={experiment._id}>
         <div className="flex items-center justify-between">
           <span className="rounded-full bg-brand/10 px-3 py-1 text-xs font-semibold text-brand-dark">{experiment.difficulty}</span>
-          <span className="text-sm text-muted">{experiment.estimatedTimeMinutes} min</span>
+          <span className="text-sm text-muted">{experiment.category ?? 'Network Security'} • {experiment.estimatedTimeMinutes === 40 ? '35–40 min' : `${experiment.estimatedTimeMinutes} min`}</span>
         </div>
         <h3 className="mt-4 text-xl font-semibold text-ink">{experiment.title}</h3>
         <p className="mt-2 min-h-12 text-sm leading-6 text-muted">{experiment.description}</p>

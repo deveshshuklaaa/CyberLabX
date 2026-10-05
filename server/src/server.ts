@@ -4,6 +4,7 @@ import { app } from './app.js';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/db.js';
 import { attachTerminalSocket } from './sockets/terminalSocket.js';
+import { attachDesktopSocket } from './sockets/desktopSocket.js';
 import { expireLabs, recoverOrphanedLabs } from './services/labEngine.js';
 import { migrateLegacyExperimentLabDefinitions } from './services/experimentMigrations.js';
 
@@ -12,13 +13,12 @@ async function main() {
     await migrateLegacyExperimentLabDefinitions();
 
     // Recover any orphaned lab sessions/Docker resources from prior crash
-    await recoverOrphanedLabs().catch(err =>
-        console.warn('Orphan recovery completed with warnings:', err),
-    );
+    await recoverOrphanedLabs();
 
     const server = http.createServer(app);
     const io = new Server(server, { cors: { origin: env.CLIENT_URL, credentials: true } });
     attachTerminalSocket(io);
+    attachDesktopSocket(server);
 
     setInterval(() => { expireLabs().catch(console.error); }, 60_000).unref();
 

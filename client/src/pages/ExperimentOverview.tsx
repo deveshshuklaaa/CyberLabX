@@ -138,7 +138,7 @@ export function ExperimentOverview() {
             className="button text-sm gap-2 py-2.5 px-6 font-bold shadow-xs whitespace-nowrap"
           >
             <Play size={16} />
-            <span>{starting ? 'Provisioning Secure Lab…' : 'Start Experiment Lab'}</span>
+            <span>{starting ? 'Provisioning Kali Linux…' : 'Start Experiment Lab'}</span>
           </button>
         </div>
       </article>
@@ -246,9 +246,10 @@ export function ExperimentOverview() {
           className="button text-sm gap-2 py-2.5 px-6 font-bold shadow-xs whitespace-nowrap"
         >
           <Play size={16} />
-          <span>{starting ? 'Provisioning Secure Lab…' : 'Start Experiment Lab'}</span>
+          <span>{starting ? 'Provisioning Kali Linux…' : 'Start Experiment Lab'}</span>
         </button>
       </div>
     </div>
   );
 }
+

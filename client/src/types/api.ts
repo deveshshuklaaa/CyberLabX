@@ -25,7 +25,7 @@ export interface Experiment {
     lab: LabDefinition; tasks: Task[]; quiz: { questions: Question[] }; taskCount?: number;
 }
 
-export interface LabSession {
+export interface LabSession { desktopAvailable?: boolean;
     id: string; attemptId?: string; status: string; targetIp?: string;
     targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: { role: string; hostname: string; displayName: string }[]; expiresAt: string; failureReason?: string;
 }
@@ -71,3 +71,4 @@ export interface QuizSubmitResponse {
         explanation: string;
     }[];
 }
+

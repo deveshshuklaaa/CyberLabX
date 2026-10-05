@@ -18,6 +18,7 @@ import {
 import { api, errorMessage } from '../services/api';
 import type { Experiment, LabSession, RuleResult, QuizSubmitResponse, TaskSubmitResponse } from '../types/api';
 import { Terminal } from '../components/terminal/Terminal';
+import { KaliDesktop } from '../components/terminal/KaliDesktop';
 import { RuleResults } from '../components/lab/RuleResults';
 import { CompletionPanel } from '../components/lab/CompletionPanel';
 
@@ -35,6 +36,7 @@ export function LabWorkspace() {
   const state = useLocation().state as { attemptId?: string; experiment?: Experiment } | null;
 
   const [output, setOutput] = useState('');
+  const [desktopOpen, setDesktopOpen] = useState(false);
   const [command, setCommand] = useState('');
   const [notice, setNotice] = useState('');
   const [ruleResults, setRuleResults] = useState<RuleResult[]>([]);
@@ -150,6 +152,8 @@ export function LabWorkspace() {
         </div>
 
         <div className="flex items-center gap-3">
+          {lab?.desktopAvailable && <button className="button-secondary text-xs" onClick={() => setDesktopOpen(value => !value)}>{desktopOpen ? 'Close Kali Desktop' : 'Open Kali Desktop'}</button>}
+          {lab?.expiresAt && <span className="text-xs">Ends {new Date(lab.expiresAt).toLocaleTimeString()}</span>}
           <button
             className="button-secondary text-xs gap-1.5 py-2 px-3 text-danger border-danger/30 hover:bg-danger/5 hover:border-danger hover:text-danger font-semibold"
             onClick={async () => {
@@ -165,6 +169,8 @@ export function LabWorkspace() {
         </div>
       </div>
 
+      {desktopOpen && lab?.desktopAvailable && <KaliDesktop labSessionId={labSessionId} />}
+      {lab?.failureReason && <p role="alert">{lab.failureReason}</p>}
       {/* ── Main Split Grid: Guided Tasks & Terminal ───────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
         {/* ── Task Sidebar ──────────────────────────────────────── */}
@@ -243,7 +249,7 @@ export function LabWorkspace() {
               <span>Target Constraint</span>
             </p>
             <p className="text-[11px] leading-relaxed">
-              Scan &amp; probe only <code className="font-mono text-brand font-bold">{targetHostname}</code> ({targetDisplayName}). Private network isolation is enforced.
+              Use only the assigned laboratory targets and evidence. External access is controlled by faculty configuration.
             </p>
           </div>
         </aside>
@@ -259,7 +265,7 @@ export function LabWorkspace() {
               </div>
               <div className="flex items-center gap-3 text-[11px] font-mono">
                 <span className="text-slate-400">Target: <span className="text-emerald-300 font-bold">{targetHostname}</span></span>
-                <span className="text-emerald-400 flex items-center gap-1">● Online</span>
+                <span className="text-emerald-400 flex items-center gap-1">{lab?.status === 'running' ? 'Kali Ready' : lab?.status ?? 'Connecting…'}</span>
               </div>
             </div>
 
@@ -285,7 +291,7 @@ export function LabWorkspace() {
                   value={command}
                   onChange={event => setCommand(event.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') submit(); }}
-                  placeholder={`e.g. nmap -sn ${targetHostname}`}
+                  placeholder="Enter the command you ran in Kali"
                 />
                 <button
                   className="button text-xs gap-1.5 py-2 px-5 font-bold shadow-xs shrink-0"

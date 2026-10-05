@@ -1,5 +1,6 @@
 import { Schema, model, type Types } from 'mongoose';
 export interface IAttempt { studentId: Types.ObjectId; experimentId: Types.ObjectId; labSessionId?: Types.ObjectId; status: 'running' | 'completed' | 'expired' | 'failed'; currentTaskIndex: number; taskResults: { taskId: string; passed: boolean; score: number; submittedAt: Date }[]; quizResult?: { score: number; totalMarks: number; answers: { questionId: string; selectedOption: number }[]; submittedAt: Date }; score: number; startedAt: Date; completedAt?: Date; }
 const schema = new Schema<IAttempt>({ studentId: { type: Schema.Types.ObjectId, ref: 'User', required: true, index: true }, experimentId: { type: Schema.Types.ObjectId, ref: 'Experiment', required: true }, labSessionId: { type: Schema.Types.ObjectId, ref: 'LabSession' }, status: { type: String, enum: ['running', 'completed', 'expired', 'failed'], default: 'running' }, currentTaskIndex: { type: Number, default: 0 }, taskResults: [{ taskId: String, passed: Boolean, score: Number, submittedAt: Date }], quizResult: { score: Number, totalMarks: Number, answers: [{ questionId: String, selectedOption: Number }], submittedAt: Date }, score: { type: Number, default: 0 }, startedAt: { type: Date, default: Date.now }, completedAt: Date }, { timestamps: true });
-schema.index({ studentId: 1, status: 1 }); export const Attempt = model<IAttempt>('Attempt', schema);
-
+schema.index({ studentId: 1, status: 1 });
+schema.index({ studentId: 1, startedAt: -1 });
+export const Attempt = model<IAttempt>('Attempt', schema);

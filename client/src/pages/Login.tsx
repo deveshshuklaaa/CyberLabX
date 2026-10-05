@@ -1,22 +1,182 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield } from 'lucide-react';
+import { Lock, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
 import { api, errorMessage } from '../services/api';
 import { useSessionStore } from '../store/sessionStore';
+import { BrandLockup } from '../components/common/BrandLockup';
 
 export function Login() {
-  const [email, setEmail] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false);
-  const navigate = useNavigate(); const setUser = useSessionStore(s => s.setUser);
-  const submit = async (event: React.FormEvent) => { event.preventDefault(); setBusy(true); setError(''); try { const { data } = await api.post('/auth/login', { email, password }); setUser(data.user); navigate(data.user.role === 'faculty' ? '/faculty' : data.user.role === 'admin' ? '/admin' : '/'); } catch (err) { setError(errorMessage(err)); } finally { setBusy(false); } };
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const navigate = useNavigate();
+  const setUser = useSessionStore(s => s.setUser);
 
-  return <div className="grid min-h-screen place-items-center bg-canvas px-5">
-    <form onSubmit={submit} className="panel w-full max-w-md border-t-4 border-t-brand p-8 shadow-md">
-      <div className="mb-7 text-center"><span className="mx-auto mb-3 inline-flex rounded-xl bg-brand p-3 text-white"><Shield/></span><h1 className="text-2xl font-bold text-ink">Welcome to CyberLabX</h1><p className="mt-2 text-sm text-muted">Your isolated cybersecurity learning lab.</p></div>
-      {error && <p role="alert" className="mb-4 rounded-lg border border-danger/30 bg-danger/10 p-3 text-sm text-danger">{error}</p>}
-      <label className="label">Email<input required type="email" className="field mt-1" value={email} onChange={e => setEmail(e.target.value)} autoComplete="email"/></label>
-      <label className="label mt-4">Password<input required type="password" className="field mt-1" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password"/></label>
-      <button disabled={busy} className="button mt-6 w-full">{busy ? 'Signing in…' : 'Sign in'}</button>
-      <p className="mt-5 text-center text-xs text-muted">Use the local development credentials configured in your environment.</p>
-    </form>
-  </div>;
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
+    try {
+      const { data } = await api.post('/auth/login', { email, password });
+      setUser(data.user);
+      navigate(data.user.role === 'faculty' ? '/faculty' : data.user.role === 'admin' ? '/admin' : '/');
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const fillQuickCreds = (e: string, p: string) => {
+    setEmail(e);
+    setPassword(p);
+  };
+
+  return (
+    <div className="min-h-screen bg-canvas flex flex-col justify-between">
+      {/* Top Institutional Header Bar */}
+      <div className="bg-brand-dark text-white/90 text-xs py-2 px-4 sm:px-6 shadow-xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="font-semibold tracking-wide">Somaiya Vidyavihar University</span>
+            <span className="text-white/40">|</span>
+            <span className="hidden sm:inline text-white/80">Department of Computer Engineering</span>
+          </div>
+          <span className="text-xs text-white/80">Virtual Laboratory Access Portal</span>
+        </div>
+      </div>
+
+      {/* Main Login Box */}
+      <div className="flex-1 flex items-center justify-center px-4 py-12">
+        <div className="w-full max-w-md">
+          {/* Main Card */}
+          <div className="bg-surface rounded-xl border border-line shadow-sm overflow-hidden">
+            {/* Somaiya Red Accent Stripe */}
+            <div className="h-1.5 bg-brand w-full" />
+
+            <div className="p-8 sm:p-9">
+              {/* Institutional Brand Lockup */}
+              <div className="flex flex-col items-center text-center pb-6 border-b border-line mb-6">
+                <img
+                  src="/assets/somaiya-emblem.png"
+                  alt="Somaiya Vidyavihar University"
+                  className="h-16 w-16 object-contain mb-3"
+                />
+                <h1 className="text-xl sm:text-2xl font-black text-brand tracking-wider uppercase font-sans">
+                  SOMAIYA <span className="text-ink">VIRTUAL LABS</span>
+                </h1>
+                <p className="text-xs uppercase tracking-widest font-semibold text-muted mt-1">
+                  Somaiya Vidyavihar University
+                </p>
+                <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-brand/5 border border-brand/15 text-brand text-xs font-medium">
+                  <span>Student &amp; Faculty Academic Sign In</span>
+                </div>
+              </div>
+
+              {/* Error Alert */}
+              {error && (
+                <div
+                  role="alert"
+                  className="mb-5 rounded-lg border border-danger/30 bg-danger/5 p-3.5 text-xs sm:text-sm text-danger flex items-start gap-2.5"
+                >
+                  <ShieldAlert size={18} className="shrink-0 mt-0.5 text-danger" />
+                  <div>
+                    <p className="font-semibold">Authentication failed</p>
+                    <p className="text-xs text-danger/90 mt-0.5">{error}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Login Form */}
+              <form onSubmit={submit} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
+                    University Email ID
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                      <Mail size={16} />
+                    </span>
+                    <input
+                      required
+                      type="email"
+                      className="field pl-9 text-sm"
+                      placeholder="student@somaiya.edu"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
+                    Account Password
+                  </label>
+                  <div className="relative">
+                    <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
+                      <Lock size={16} />
+                    </span>
+                    <input
+                      required
+                      type="password"
+                      className="field pl-9 text-sm"
+                      placeholder="••••••••••••"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="button w-full mt-6 py-2.5 text-sm gap-2"
+                >
+                  <span>{busy ? 'Authenticating with Somaiya Portal…' : 'Access Virtual Laboratories'}</span>
+                  {!busy && <ArrowRight size={16} />}
+                </button>
+              </form>
+
+              {/* Quick Fill Credentials for Local Dev (stripped in production) */}
+              {import.meta.env.DEV && (
+                <div className="mt-6 pt-5 border-t border-line text-xs">
+                  <p className="text-muted font-medium mb-2 text-center">Development Seed Accounts:</p>
+                  <div className="grid grid-cols-2 gap-2 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => fillQuickCreds('student@cyberlabx.local', 'CyberLabXLocalStudent2026!')}
+                      className="p-1.5 rounded border border-line bg-canvas hover:border-brand text-muted hover:text-brand transition text-center"
+                    >
+                      Student Account
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => fillQuickCreds('faculty@cyberlabx.local', 'CyberLabXLocalFaculty2026!')}
+                      className="p-1.5 rounded border border-line bg-canvas hover:border-brand text-muted hover:text-brand transition text-center"
+                    >
+                      Faculty Account
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Academic Portal Disclaimer */}
+          <div className="mt-6 text-center text-xs text-muted space-y-1">
+            <p>Authorized access only. All laboratory sessions are logged for academic assessment.</p>
+            <p className="text-[11px] text-muted/80">Guided By: Prof. Harsh Bhor · Developed By: Devesh Shukla &amp; Arvind Shekhawat</p>
+          </div>
+        </div>
+      </div>
+
+      {/* University Copyright Footer */}
+      <div className="bg-surface border-t border-line py-3 px-4 text-center text-xs text-muted">
+        © 2026 Somaiya Vidyavihar University. All rights reserved.
+      </div>
+    </div>
+  );
 }

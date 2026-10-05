@@ -28,6 +28,14 @@ export interface LabSession {
     targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: { role: string; hostname: string; displayName: string }[]; expiresAt: string; failureReason?: string;
 }
 
+export interface StudentDashboardStats { totalExperiments: number; experimentsAttempted: number; experimentsCompleted: number; averageScore: number; bestScore: number; }
+export interface RecentAttempt { attemptId: string; experimentId: string; experimentTitle?: string; status: 'running' | 'completed' | 'expired' | 'failed'; score: number | null; startedAt: string; completedAt?: string; reportAvailable: boolean; reportId?: string; }
+export interface StudentDashboardData { stats: StudentDashboardStats; recentAttempts: RecentAttempt[]; }
+
+export interface StudentHistoryAttempt { attemptId: string; experimentId: string; experimentTitle?: string; experimentCategory?: string; status: 'running' | 'completed' | 'expired' | 'failed'; score: number | null; startedAt: string; completedAt?: string; reportAvailable: boolean; reportId?: string; }
+export interface StudentHistoryData { attempts: StudentHistoryAttempt[]; }
+
+
 /* ── Backend response types ────────────────────────────────────── */
 
 export interface RuleResult {

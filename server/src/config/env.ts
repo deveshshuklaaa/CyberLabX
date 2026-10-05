@@ -16,6 +16,7 @@ const rootEnvPath = path.resolve(currentDir, '../../../.env');
 dotenv.config({ path: rootEnvPath });
 
 const schema = z.object({
+  LAB_BACKEND: z.enum(['qemu', 'docker']).default('qemu'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),

@@ -24,6 +24,8 @@
     "mongoose": "^8.16.1",
     "pdfkit": "^0.17.1",
     "socket.io": "^4.8.1",
+    "ssh2": "^1.17.0",
+    "ws": "^8.22.0",
     "zod": "^3.25.67"
   },
   "devDependencies": {
@@ -35,6 +37,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.10",
     "@types/pdfkit": "^0.17.1",
+    "@types/ssh2": "^1.15.6",
+    "@types/ws": "^8.18.2",
     "@typescript-eslint/eslint-plugin": "^8.35.1",
     "@typescript-eslint/parser": "^8.35.1",
     "eslint": "^9.30.0",
@@ -43,4 +47,3 @@
     "vitest": "^3.2.4"
   }
 }
-

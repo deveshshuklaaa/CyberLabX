@@ -8,4 +8,9 @@ coverage/
 **/reports/*.pdf
 server/reports/*.pdf
 reports/*.pdf
+infrastructure/vm/downloads/
+infrastructure/vm/kali/base/
+infrastructure/vm/runtime/
+*.qcow2
+*.qcow2.partial
 

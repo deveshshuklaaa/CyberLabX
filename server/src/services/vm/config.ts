@@ -12,6 +12,7 @@ const schema = z.object({
   VM_MEMORY_MB: z.coerce.number().int().min(4096).max(8192).default(4096),
   VM_HOST_RESERVE_MB: z.coerce.number().int().min(1024).default(2048),
   VM_MAX_CONCURRENT: z.coerce.number().int().min(1).max(8).default(1),
+  VM_MIN_FREE_DISK_GB: z.coerce.number().int().min(8).default(16),
   VM_NETWORK_MODE: z.enum(['nat', 'bridged']).default('nat'),
   VM_TAP_ADAPTER: z.string().regex(/^[a-zA-Z0-9 _-]+$/).optional(),
   VM_ALLOW_INTERNET: z.enum(['true', 'false']).default('false'),

@@ -6,6 +6,7 @@ import { User } from '../models/User.js';
 import { env } from '../config/env.js';
 import { authorizeVm } from '../services/vm/access.js';
 import { trackConnection } from '../services/vm/manager.js';
+import { qmp } from '../services/vm/qmp.js';
 
 export function attachDesktopSocket(server: Server) {
   const wss = new WebSocketServer({ noServer: true, maxPayload: 1024 * 1024, perMessageDeflate: false });
@@ -15,13 +16,16 @@ export function attachDesktopSocket(server: Server) {
     const reject = () => { socket.write('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n'); socket.destroy(); };
     try {
       if (request.headers.origin !== new URL(env.CLIENT_URL).origin) return reject();
-      const token = request.headers.cookie?.split(';').map(c => c.trim()).find(c => c.startsWith('cyberlabx_session='))?.slice(17);
+      const cookiePrefix = 'cyberlabx_session=';
+      const token = request.headers.cookie?.split(';').map(c => c.trim()).find(c => c.startsWith(cookiePrefix))?.slice(cookiePrefix.length);
       if (!token) return reject();
       const payload = jwt.verify(token, env.JWT_SECRET) as { sub: string };
       const user = await User.findById(payload.sub);
       if (!user?.isActive || user.role !== 'student') return reject();
       const id = url.pathname.slice('/desktop/'.length);
       const { vm } = await authorizeVm(id, String(user._id));
+      const identity = await qmp(vm.qmpPort, 'query-uuid') as { UUID: string };
+      if (identity.UUID !== vm.id) return reject();
       if (socket.destroyed) return;
       wss.handleUpgrade(request, socket, head, ws => {
         const tcp = net.connect({ host: '127.0.0.1', port: vm.vncPort });

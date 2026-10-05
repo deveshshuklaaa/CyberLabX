@@ -18,7 +18,8 @@ KEYRING=$(mktemp -d)
 trap 'rm -rf "$KEYRING"' EXIT
 gpg --homedir "$KEYRING" --import "$CACHE/kali-key.asc"
 gpg --homedir "$KEYRING" --with-colons --fingerprint | grep -q '827C8569F2518CC677FECA1AED65462EC8D5E4C5' || { echo 'Unexpected Kali signing key; review official key rotation.'; exit 1; }
-gpg --homedir "$KEYRING" --verify "$CACHE/SHA256SUMS.gpg" "$CACHE/SHA256SUMS"
+gpg --homedir "$KEYRING" --export 827C8569F2518CC677FECA1AED65462EC8D5E4C5 > "$KEYRING/trusted.gpg"
+gpgv --keyring "$KEYRING/trusted.gpg" "$CACHE/SHA256SUMS.gpg" "$CACHE/SHA256SUMS"
 curl --fail --location --continue-at - --retry 3 "$URL/$ARCHIVE" -o "$CACHE/$ARCHIVE"
 (cd "$CACHE"; grep -E "^[a-fA-F0-9]{64} +[*]?$ARCHIVE$" SHA256SUMS | sha256sum --check --strict)
 EXTRACT=$(mktemp -d "$DIR/extract.XXXXXX")

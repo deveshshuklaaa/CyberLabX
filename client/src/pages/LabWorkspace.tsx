@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -18,7 +18,7 @@ import {
 import { api, errorMessage } from '../services/api';
 import type { Experiment, LabSession, RuleResult, QuizSubmitResponse, TaskSubmitResponse } from '../types/api';
 import { Terminal } from '../components/terminal/Terminal';
-import { KaliDesktop } from '../components/terminal/KaliDesktop';
+const KaliDesktop = lazy(() => import('../components/terminal/KaliDesktop').then(module => ({ default: module.KaliDesktop })));
 import { RuleResults } from '../components/lab/RuleResults';
 import { CompletionPanel } from '../components/lab/CompletionPanel';
 
@@ -169,7 +169,7 @@ export function LabWorkspace() {
         </div>
       </div>
 
-      {desktopOpen && lab?.desktopAvailable && <KaliDesktop labSessionId={labSessionId} />}
+      {desktopOpen && lab?.desktopAvailable && <Suspense fallback={<p>Loading Kali desktop…</p>}><KaliDesktop labSessionId={labSessionId} /></Suspense>}
       {lab?.failureReason && <p role="alert">{lab.failureReason}</p>}
       {/* ── Main Split Grid: Guided Tasks & Terminal ───────────────────────────── */}
       <div className="grid gap-6 lg:grid-cols-[360px_1fr]">

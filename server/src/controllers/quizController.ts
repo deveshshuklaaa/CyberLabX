@@ -80,14 +80,17 @@ export const submitQuiz = asyncHandler(async (req, res) => {
     });
 
     if (session && !['stopped', 'expired'].includes(session.status)) {
+        session.status = 'stopping';
+        await session.save();
         try {
             await cleanupLab(session);
+            session.status = 'stopped';
+            session.endedAt = new Date();
         } catch (cleanupErr) {
-            // Cleanup is best-effort; removeQuietly inside already swallows errors
+            session.status = 'failed';
+            session.failureReason = 'Cleanup pending; the VM reaper will retry.';
             console.error('Lab cleanup warning for session', session._id, cleanupErr);
         }
-        session.status = 'stopped';
-        session.endedAt = new Date();
         await session.save();
     }
 

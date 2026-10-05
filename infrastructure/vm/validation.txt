@@ -1,0 +1,42 @@
+Somaiya Virtual Labs — real Kali VM phase
+Date: 2026-10-05 (Asia/Calcutta)
+Branch: feature/real-kali-vm, based on d58fc2b
+
+PASS npm --prefix client test -- --run
+     5 files, 20 tests.
+PASS npm --prefix server test -- --run
+     24 files, 132 tests (final server pass after terminal and desktop fixes).
+PASS npm --prefix client run build
+     TypeScript + Vite; noVNC emitted as a separate lazy-loaded chunk.
+     Existing/main application chunk still exceeds Vite's 500 kB advisory threshold.
+PASS npm --prefix server run build
+     TypeScript, including test sources.
+PASS compiled VM manager and SSH modules import under native Node ESM.
+PASS bash -n on prepare-base.sh, guest/prepare.sh, guest/first-boot.sh.
+PASS PowerShell syntax parser on install-qemu.ps1.
+PASS git diff --check.
+
+New VM test coverage:
+- WHPX args, loopback management, virtual disks only, path validation, resource bounds.
+- Actual loopback port reservations and QMP protocol against a test TCP server.
+- Mocked QEMU overlay creation, disk creation, concurrency, unique credentials,
+  lifecycle, provisioning failure, orphan recovery, unrelated process exclusion.
+- Real SSH protocol to a test SSH server: host-key pinning, PTY, resize, reconnect.
+- Socket.IO PTY forwarding and immediate output capture before asynchronous DB writes.
+- Actual WebSocket/TCP proxy plumbing: owner allowed, foreign owner/origin/no auth denied,
+  stale VM identity denied before VNC connection.
+- VM curriculum projections retain legacy definitions and replace simulated helpers.
+- noVNC component routing, connection states, and disconnect cleanup.
+
+NOT RUN / NOT CLAIMED:
+- QEMU installation or actual QEMU/WHPX boot.
+- Kali image download/signature/checksum verification and prepared base build.
+- Browser terminal commands executed inside Kali.
+- Kali desktop, GUI apps, physical guest filesystem evidence, TestDisk/PhotoRec live workflow.
+- End-to-end migration acceptance for experiments 01–07.
+- Live VM crash/restart/TTL/stop cleanup and two-student access tests.
+- TAP/bridge functionality.
+- VM boot latency, CPU/RAM/disk performance or multi-VM capacity measurements.
+
+Reason: user explicitly selected "Keep live testing pending for now" after the host
+audit found only ~1.4 GiB free RAM and missing QEMU. This phase remains incomplete.

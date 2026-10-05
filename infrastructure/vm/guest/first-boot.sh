@@ -26,6 +26,11 @@ case "$PROFILE" in
     docker run -d --name "$NAME" --hostname "$NAME" --network somaiya-lab --ip 172.28.0.10 \
       --memory 128m --cpus 0.5 --pids-limit 64 "somaiya-$IMAGE:base"
     printf '172.28.0.10 %s\n' "$NAME" >> /etc/hosts
+    for _ in $(seq 1 30); do
+      test "$(docker inspect -f '{{.State.Health.Status}}' "$NAME")" = healthy && break
+      sleep 1
+    done
+    test "$(docker inspect -f '{{.State.Health.Status}}' "$NAME")" = healthy
     if [[ "$PROFILE" == dos-analysis-v1 ]]; then
       docker load -i /opt/somaiya/dos-client.tar
       docker run -d --name legitimate-client --network somaiya-lab --memory 64m --cpus 0.25 --pids-limit 32 somaiya-dos-client:base

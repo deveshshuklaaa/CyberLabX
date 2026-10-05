@@ -3,6 +3,12 @@ import { guestExec } from './ssh.js';
 
 /** Fixed server-owned inspections only; never execute a browser-submitted command. */
 const checks: Record<string, Record<string, string>> = {
+  'shell-target-v1': {
+    'live-host': 'nmap -sT -p 80 172.28.0.10 -oG - | grep "80/open"',
+    'syn-scan': 'nmap -sT -p 80 172.28.0.10 -oG - | grep "80/open"',
+    'os-detection': 'nmap -sT -p 80 172.28.0.10 -oG - | grep "80/open"',
+    'service-detection': 'nmap -sT -p 80 172.28.0.10 -oG - | grep "80/open"',
+  },
   'keylogger-lab-v1': {
     'compile-skeylogger': 'test -x /home/student/skeylogger/skeylogger',
     'launch-skeylogger': 'pgrep -x skeylogger',

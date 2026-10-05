@@ -1,4 +1,11 @@
-# CyberLabX V1
+# Somaiya Virtual Labs — Kali VM backend
+
+This branch defaults to Windows QEMU/WHPX for student execution. See
+[the VM setup and validation report](infrastructure/vm/README.md) before starting labs.
+The VM phase is **not live-validated**; browser/Kali and performance tests are pending.
+
+The instructions below describe the retained legacy container backend, which requires
+an explicit `LAB_BACKEND=docker`. There is no automatic fallback when VM startup fails.
 
 CyberLabX is an isolated, browser-based cybersecurity lab. V1 teaches Network Mapping with real Nmap commands running inside a disposable Kali container against a controlled private target.
 

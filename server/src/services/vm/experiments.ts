@@ -9,7 +9,8 @@ function task(id: string, title: string, command: string, order: number, output:
 
 /** A VM-specific view: stored legacy curriculum remains available until live validation. */
 export function vmExperiment<T extends IExperiment>(original: T): T {
-  const value = structuredClone(original);
+  // Preserve Mongo ObjectId serialization in the public experiment response.
+  const value = { ...original, lab: { ...original.lab, terminal: { ...original.lab.terminal } } } as T;
   value.lab.terminal.promptLabel = 'student@somaiya:~$';
   const profile = value.lab.profile;
   const intro = ['Start Kali and use its real bash terminal. Use sudo for privileged tools.',
@@ -42,7 +43,7 @@ export function vmExperiment<T extends IExperiment>(original: T): T {
     case 'keylogger-lab-v1':
       value.tasks = [
         task('compile-skeylogger', 'Compile upstream skeylogger', 'make -C /home/student/skeylogger', 1),
-        task('launch-skeylogger', 'Start guest keyboard observation', 'sudo /home/student/skeylogger/skeylogger', 2),
+        task('launch-skeylogger', 'Start guest keyboard observation', 'sudo /home/student/skeylogger/skeylogger &', 2),
         task('inject-test-input', 'Confirm virtual keyboard events', 'sudo cat /var/log/skeylogger', 3),
         task('inspect-log', 'Stop observation and inspect the log', 'sudo cat /var/log/skeylogger', 4),
       ];

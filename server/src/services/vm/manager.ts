@@ -1,8 +1,8 @@
 import { spawn, execFile, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
 import { createHash, randomUUID } from 'node:crypto';
-import { utils } from 'ssh2';
-import { mkdir, readFile, writeFile, rename, readdir, rm, access, lstat } from 'node:fs/promises';
+import ssh2 from 'ssh2';
+import { mkdir, readFile, writeFile, rename, readdir, rm, access, lstat, statfs } from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { assertId, qemuArgs, vmConfig, type VmRecord } from './config.js';
@@ -11,6 +11,7 @@ import { qmp } from './qmp.js';
 import { guestExec, openGuestShell } from './ssh.js';
 
 const execute = promisify(execFile);
+const { utils } = ssh2;
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 const children = new Map<string, ChildProcess>();
 const connections = new Map<string, Set<() => void>>();
@@ -51,6 +52,14 @@ export async function assertVmReady() {
   const { stdout } = await execute(config.QEMU_BINARY, ['-accel', 'help'], { windowsHide: true, timeout: 10000 });
   if (!stdout.includes('whpx')) throw new Error('This QEMU build does not support WHPX.');
   await execute(config.QEMU_IMG_BINARY, ['--version'], { windowsHide: true, timeout: 10000 });
+  if (config.VM_NETWORK_MODE === 'bridged') {
+    const { stdout: adapters } = await execute('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+      'Get-NetAdapter -IncludeHidden | Select-Object Name,InterfaceDescription | ConvertTo-Json -Compress'], { windowsHide: true, timeout: 10000 });
+    const value = JSON.parse(adapters || '[]');
+    if (!(Array.isArray(value) ? value : [value]).some(a => a.Name === config.VM_TAP_ADAPTER && /tap/i.test(a.InterfaceDescription))) {
+      throw new Error('Configured TAP adapter was not detected. Configure the Windows bridge before enabling bridged mode.');
+    }
+  }
   if (os.freemem() / 1048576 < config.VM_MEMORY_MB + config.VM_HOST_RESERVE_MB) {
     throw new Error(`Insufficient free RAM: Kali requires ${config.VM_MEMORY_MB} MB plus ${config.VM_HOST_RESERVE_MB} MB host headroom.`);
   }
@@ -111,11 +120,14 @@ export function createVm(input: { attemptId: string; studentId: string; profile:
     await assertVmReady();
     const config = vmConfig();
     await mkdir(config.VM_RUNTIME_DIR, { recursive: true, mode: 0o700 });
+    const diskSpace = await statfs(config.VM_RUNTIME_DIR);
+    if (diskSpace.bavail * diskSpace.bsize < config.VM_MIN_FREE_DISK_GB * 1024 ** 3) throw new Error('Insufficient free disk space for a Kali attempt.');
     const records = (await readdir(config.VM_RUNTIME_DIR)).filter(name => /^[a-f\d]{24}$/i.test(name));
     if (records.length >= config.VM_MAX_CONCURRENT) throw new Error('Kali VM capacity reached. Stop an existing lab first.');
-    const directory = vmDirectory(input.attemptId);
-    await mkdir(directory, { mode: 0o700 });
     const reservation = await reservePorts();
+    const directory = vmDirectory(input.attemptId);
+    try { await mkdir(directory, { mode: 0o700 }); }
+    catch (error) { await reservation.release(); throw error; }
     const identity = utils.generateKeyPairSync('ed25519');
     const host = utils.generateKeyPairSync('ed25519');
     const vm: VmRecord = {
@@ -167,7 +179,16 @@ export function createVm(input: { attemptId: string; studentId: string; profile:
 
 export const destroyVm = (attemptId: string) => exclusive(async () => {
   try { await destroy(await getVm(attemptId)); }
-  catch (error) { if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error; }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+    const directory = vmDirectory(attemptId);
+    const info = await lstat(directory).catch(e => { if (e.code === 'ENOENT') return null; throw e; });
+    if (!info) return;
+    if (info.isSymbolicLink()) throw new Error('Unsafe orphan directory.');
+    // Crash before the first metadata rename: remove files only when no process references them.
+    if ((await managedProcesses()).some(p => p.command.includes(directory))) throw new Error('Orphan VM is missing metadata; operator recovery required.');
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 export async function getVmStatus(attemptId: string) {
   try {
@@ -186,6 +207,8 @@ export async function openTerminal(attemptId: string) {
   const vm = await getVm(attemptId);
   if (vm.state !== 'running' || Date.parse(vm.expiresAt) <= Date.now()) throw new Error('VM is inactive.');
   const shell = await openGuestShell(vm);
+  const expiry = setTimeout(shell.close, Math.max(1, Date.parse(vm.expiresAt) - Date.now()));
+  shell.output.once('close', () => clearTimeout(expiry));
   const untrack = trackConnection(attemptId, shell.close); shell.output.once('close', untrack);
   return shell;
 }

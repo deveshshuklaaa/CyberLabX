@@ -43,8 +43,18 @@ export const startLab = asyncHandler(async (req, res) => {
     const lab = await provisionLab({ attemptId: String(attempt._id), studentId: String(req.user!._id), lab: experiment.lab });
     Object.assign(session, lab, {
       status: 'running',
-      targetHostname: experiment.lab.profile === 'shell-target-v1' ? experiment.lab.target.hostname : 'victim',
-      targetDisplayName: experiment.lab.profile === 'shell-target-v1' ? experiment.lab.target.displayName : 'Controlled HTTP victim',
+      targetHostname:
+        experiment.lab.profile === 'shell-target-v1' || experiment.lab.profile === 'recon-v1'
+          ? experiment.lab.target.hostname
+          : experiment.lab.profile === 'dos-analysis-v1'
+            ? 'victim'
+            : undefined,
+      targetDisplayName:
+        experiment.lab.profile === 'shell-target-v1' || experiment.lab.profile === 'recon-v1'
+          ? experiment.lab.target.displayName
+          : experiment.lab.profile === 'dos-analysis-v1'
+            ? 'Controlled HTTP victim'
+            : 'Internal Forensic Sandbox',
       terminalPrompt: experiment.lab.terminal.promptLabel,
       terminalUser: experiment.lab.profile === 'dos-analysis-v1' ? 'student' : undefined,
       startedAt: new Date(),

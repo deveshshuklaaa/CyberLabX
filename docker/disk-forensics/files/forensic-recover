@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+IMAGE="${1:-}"
+OUTDIR="${2:-./recovered_files}"
+
+if [[ -z "$IMAGE" ]]; then
+    echo "Usage: forensic-recover <disk_image.img> [output_directory]"
+    echo "Example: forensic-recover recovery_test.img recovered_files/"
+    exit 1
+fi
+
+if [[ ! -f "$IMAGE" ]]; then
+    echo "[!] Error: Image file not found: $IMAGE"
+    exit 1
+fi
+
+mkdir -p "$OUTDIR"
+
+echo "=========================================================="
+echo " SOMAIYA VIRTUAL LABS — FORENSIC FILE RECOVERY SUITE"
+echo " Image: $IMAGE"
+echo " Target Recovery Directory: $OUTDIR"
+echo " Mode: Non-Destructive Raw Image Extraction"
+echo "=========================================================="
+
+echo "[*] Scanning filesystem structures in $IMAGE..."
+for fname in confidential.txt experiment.txt students.csv; do
+    if debugfs -R "stat $fname" "$IMAGE" 2>/dev/null | grep -q "Inode"; then
+        debugfs -R "dump $fname $OUTDIR/$fname" "$IMAGE" 2>/dev/null
+        echo "    [+] Successfully recovered: $fname"
+    fi
+done
+
+echo ""
+echo "=========================================================="
+echo " File Recovery: SUCCESSFUL. Evidence restored in: $OUTDIR"
+echo "=========================================================="

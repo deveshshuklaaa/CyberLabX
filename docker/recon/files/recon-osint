@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+TARGET="${1:-}"
+
+if [[ -z "$TARGET" ]]; then
+    echo "Usage: recon-osint <target-host>"
+    echo "Example: recon-osint recon-target"
+    exit 1
+fi
+
+if [[ "$TARGET" != "recon-target"* ]]; then
+    echo "[!] Error: Educational OSINT scanner is restricted to the authorized lab target: recon-target"
+    exit 1
+fi
+
+echo "================================================================"
+echo " SOMAIYA VIRTUAL LABS — OSINT & FOOTPRINTING SUITE"
+echo " Target: $TARGET"
+echo " Mode: Passive Reconnaissance / Simulated Open-Source Intelligence"
+echo "================================================================"
+echo ""
+echo "[*] Querying simulated WHOIS Registry..."
+echo "    Domain Name: $TARGET"
+echo "    Registrar: Somaiya Educational Registry Services"
+echo "    Creation Date: 2024-01-15T00:00:00Z"
+echo "    Updated Date: 2026-03-10T12:00:00Z"
+echo "    Registrant Org: Somaiya Vidyavihar University - Cyber Lab"
+echo "    Name Server: ns1.$TARGET"
+echo "    Name Server: ns2.$TARGET"
+echo "    DNSSEC: unsigned"
+echo ""
+echo "[*] Querying DNS & Subdomain Enumeration (Passive DNS / Certificate Logs)..."
+echo "    [+] mail.$TARGET -> Host MX priority 10"
+echo "    [+] portal.$TARGET -> Student & Faculty Portal"
+echo "    [+] api.$TARGET -> Internal REST Endpoints"
+echo ""
+echo "[*] Shodan / Public Surface Footprint Summary:"
+echo "    [+] Discovered Open Ports: 80/TCP (HTTP), 53/UDP (DNS)"
+echo "    [+] Web Server: lighttpd"
+echo "    [+] Detected Subdomains: 3 verified records"
+echo "    [+] SPF Record: v=spf1 mx ip4:10.0.0.0/8 -all"
+echo ""
+echo "================================================================"
+echo " OSINT Analysis Complete: Identified 3 subdomains, authoritative DNS, and external footprint for recon-target."
+echo "================================================================"

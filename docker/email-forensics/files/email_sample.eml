@@ -1,0 +1,46 @@
+From: "Somaiya Accounts Office" <accounts-alert@secure-somaiya-notice.net>
+To: "Student" <student@somaiya.edu>
+Subject: Action Required: Mandatory Student Account Security Verification - SVU-2026-881
+Date: Mon, 05 Oct 2026 09:20:10 +0530
+Message-ID: <20261005092010.9942@secure-somaiya-notice.net>
+Return-Path: <bounce-9942@mail.secure-somaiya-notice.net>
+Delivered-To: student@somaiya.edu
+Received: from mail.secure-somaiya-notice.net (198.51.100.25) by mx.somaiya.edu (10.0.0.1) with ESMTP id svu9942a; Mon, 05 Oct 2026 09:20:15 +0530
+Received: from localhost (127.0.0.1) by mail.secure-somaiya-notice.net id x87a11; Mon, 05 Oct 2026 09:20:10 +0530
+Authentication-Results: mx.somaiya.edu; dkim=fail reason="signature missing"; spf=softfail (mx.somaiya.edu: domain of bounce-9942@secure-somaiya-notice.net does not designate 198.51.100.25 as permitted sender) smtp.mailfrom=bounce-9942@secure-somaiya-notice.net; dmarc=fail (p=REJECT sp=REJECT) header.from=secure-somaiya-notice.net
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="----=_Part_84920_192837192.176233"
+
+------=_Part_84920_192837192.176233
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+
+Dear Student,
+
+Our automated university security auditing system detected an unauthorized login attempt to your Somaiya Student Portal from an unrecognized IP address (198.51.100.25).
+
+Please verify your credentials immediately at http://198.51.100.25/portal/verify-identity.html or download and review the attached clearance notice (AccountNotice.pdf).
+
+Failure to verify within 24 hours will lead to account suspension.
+
+Regards,
+Somaiya Vidyavihar University Accounts & Security Desk
+Somaiya Virtual Labs Educational Sandbox
+
+------=_Part_84920_192837192.176233
+Content-Type: text/plain; name="AccountNotice.pdf"
+Content-Disposition: attachment; filename="AccountNotice.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQKJcTl8uXrp/Og0MTGCjEgMCBvYmoKPDwvVHlwZSAvQ2F0YWxvZyAvUGFnZXMg
+MiAwIFI+PgplbmRvYmoKMiAwIG9iago8PC9UeXBlIC9QYWdlcyAvS2lkcyBbMyAwIFJdIC9D
+b3VudCAxPj4KZW5kb2JqCjMgMCBvYmoKPDwvVHlwZSAvUGFnZSAvUGFyZW50IDIgMCBSIC9N
+ZWRpYUJveCBbMCAwIDYxMiA3OTJdIC9Db250ZW50cyA0IDAgUj4+CmVuZG9iago0IDAgb2Jq
+Cjw8L0xlbmd0aCA2Nz4+CnN0cmVhbQpCVAovRjEgMTIgVGYKNzIgNzEyIFRECihTb21haXlh
+IFZpcnR1YWwgTGFicyAtIEVkdWNhdGlvbmFsIEZvcmVuc2ljcyBTYW1wbGUpIFRqCkVUCmVu
+ZHN0cmVhbQplbmRvYmoKeHJlZgowIDUKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDE1
+IDAwMDAwIG4gCjAwMDAwMDAwNjggMDAwMDAgbiAKMDAwMDAwMDExOCAwMDAwMCBuIAowMDAw
+MDAwMjEzIDAwMDAwIG4gCnRyYWlsZXIKPDwvU2l6ZSA1IC9Sb290IDEgMCBSPj4Kc3RhcnR4
+cmVmCjMzMQolJUVPRgo=
+
+------=_Part_84920_192837192.176233--

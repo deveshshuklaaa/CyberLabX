@@ -76,11 +76,13 @@ export function LabWorkspace() {
   }
 
   const task = experiment.tasks[index];
-  const experimentVictim = experiment.lab.profile === 'shell-target-v1'
+  const experimentVictim = experiment.lab.profile === 'shell-target-v1' || experiment.lab.profile === 'recon-v1'
     ? experiment.lab.target
-    : experiment.lab.resources.find(resource => resource.role === 'victim')!;
-  const targetHostname = lab?.targetHostname ?? experimentVictim.hostname;
-  const targetDisplayName = lab?.targetDisplayName ?? experimentVictim.displayName;
+    : experiment.lab.profile === 'dos-analysis-v1'
+      ? experiment.lab.resources.find(resource => resource.role === 'victim')
+      : undefined;
+  const targetHostname = lab?.targetHostname ?? experimentVictim?.hostname ?? 'Internal Sandbox';
+  const targetDisplayName = lab?.targetDisplayName ?? experimentVictim?.displayName ?? 'Isolated Laboratory Environment';
   const terminalPrompt = lab?.terminalPrompt ?? experiment.lab.terminal.promptLabel;
 
   const submit = async () => {

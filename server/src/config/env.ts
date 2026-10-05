@@ -68,6 +68,13 @@ const schema = z.object({
   DOS_VICTIM_IMAGE: z.string().default('cyberlabx-dos-victim:latest'),
   DOS_CLIENT_IMAGE: z.string().default('cyberlabx-dos-client:latest'),
 
+  RECON_STUDENT_IMAGE: z.string().default('cyberlabx-recon:latest'),
+  RECON_TARGET_IMAGE: z.string().default('cyberlabx-recon-target:latest'),
+  KEYLOGGER_IMAGE: z.string().default('cyberlabx-keylogger-lab:latest'),
+  EMAIL_FORENSICS_IMAGE: z.string().default('cyberlabx-email-forensics:latest'),
+  FILE_FORENSICS_IMAGE: z.string().default('cyberlabx-file-forensics:latest'),
+  DISK_FORENSICS_IMAGE: z.string().default('cyberlabx-disk-forensics:latest'),
+
   REPORT_DIR: z
     .string()
     .default('./reports'),

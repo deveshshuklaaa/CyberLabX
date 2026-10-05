@@ -2,7 +2,10 @@ node_modules/
 dist/
 coverage/
 .env
-reports/*.pdf
-!reports/.gitkeep
+.env.*
+!.env.example
 *.log
+**/reports/*.pdf
+server/reports/*.pdf
+reports/*.pdf
 

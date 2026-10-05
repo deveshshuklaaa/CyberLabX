@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INPUT_TEXT="${1:-}"
+
+if [[ -z "$INPUT_TEXT" ]]; then
+    echo "Usage: lab-test-input \"<harmless test string>\""
+    echo "Example: lab-test-input \"SomaiyaLabTest2026\""
+    exit 1
+fi
+
+FIFO_PATH="/tmp/.lab_keyboard_pipe"
+
+if [[ ! -p "$FIFO_PATH" ]]; then
+    echo "[!] Warning: skeylogger is not currently running or input pipe not ready."
+    echo "[*] Start skeylogger first: ./skeylogger &"
+    # Create pipe anyway so keystrokes can be buffered
+    mkfifo "$FIFO_PATH" 2>/dev/null || true
+fi
+
+echo "[*] Transmitting simulated test keystrokes to lab input buffer..."
+printf "%s\n" "$INPUT_TEXT" > "$FIFO_PATH"
+echo "[+] Transmitted $(echo -n "$INPUT_TEXT" | wc -c) keystrokes into lab input buffer."
+echo "[+] Keylogger intercepted simulated keystrokes inside disposable container."

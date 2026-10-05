@@ -14,7 +14,9 @@ export interface Question {
 
 export type LabDefinition =
     | { profile: 'shell-target-v1'; studentImageKey: 'kali-nmap'; target: { imageKey: 'nmap-http-target'; hostname: string; displayName: string }; terminal: { promptLabel: string } }
-    | { profile: 'dos-analysis-v1'; resources: { role: 'student' | 'victim' | 'legitimate-client'; imageKey: string; hostname: string; displayName: string }[]; terminal: { promptLabel: string } };
+    | { profile: 'recon-v1'; studentImageKey: 'kali-recon'; target: { imageKey: 'recon-target'; hostname: string; displayName: string }; terminal: { promptLabel: string } }
+    | { profile: 'dos-analysis-v1'; resources: { role: 'student' | 'victim' | 'legitimate-client'; imageKey: string; hostname: string; displayName: string }[]; terminal: { promptLabel: string } }
+    | { profile: 'keylogger-lab-v1' | 'email-forensics-v1' | 'file-forensics-v1' | 'disk-forensics-v1'; studentImageKey: string; terminal: { promptLabel: string } };
 
 export interface Experiment {
     _id: string; title: string; slug: string; description: string; aim: string;

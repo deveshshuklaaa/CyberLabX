@@ -56,6 +56,12 @@ const approvedImages = {
   'kali-dos-attacker': env.DOS_ATTACKER_IMAGE,
   'dos-http-victim': env.DOS_VICTIM_IMAGE,
   'dos-legitimate-client': env.DOS_CLIENT_IMAGE,
+  'kali-recon': env.RECON_STUDENT_IMAGE,
+  'recon-target': env.RECON_TARGET_IMAGE,
+  'kali-keylogger-lab': env.KEYLOGGER_IMAGE,
+  'kali-email-forensics': env.EMAIL_FORENSICS_IMAGE,
+  'kali-file-forensics': env.FILE_FORENSICS_IMAGE,
+  'kali-disk-forensics': env.DISK_FORENSICS_IMAGE,
 } as const;
 
 export function resolveLabDefinition(lab: unknown) {
@@ -74,25 +80,46 @@ export function resolveLabDefinition(lab: unknown) {
       imageKey: resource.imageKey,
       hostname: resource.hostname,
       displayName: resource.displayName,
-      image: approvedImages[resource.imageKey],
+      image: approvedImages[resource.imageKey as keyof typeof approvedImages],
     }));
     if (resolved.some(resource => !resource.image)) throw new Error('Lab definition references an unsupported image key.');
     return { profile: 'dos-analysis-v1' as const, resources: resolved };
   }
-  if (definition.profile !== 'shell-target-v1') {
-    throw new Error(`Unsupported lab profile: ${String(definition.profile)}`);
-  }
-  if (!definition.target || !definition.terminal) {
-    throw new Error('Experiment lab definition is incomplete. Run the experiment data migration before starting this lab.');
+
+  if (definition.profile === 'shell-target-v1' || definition.profile === 'recon-v1') {
+    if (!definition.target || !definition.terminal) {
+      throw new Error('Experiment lab definition is incomplete. Run the experiment data migration before starting this lab.');
+    }
+
+    const studentImage = approvedImages[definition.studentImageKey as keyof typeof approvedImages];
+    const targetImage = approvedImages[definition.target.imageKey as keyof typeof approvedImages];
+    if (!studentImage || !targetImage) {
+      throw new Error('Lab definition references an unsupported image key.');
+    }
+
+    return {
+      profile: definition.profile,
+      studentImage,
+      targetImage,
+      targetHostname: definition.target.hostname,
+      targetDisplayName: definition.target.displayName,
+    };
   }
 
-  const studentImage = approvedImages[definition.studentImageKey as keyof typeof approvedImages];
-  const targetImage = approvedImages[definition.target.imageKey as keyof typeof approvedImages];
-  if (!studentImage || !targetImage) {
-    throw new Error('Lab definition references an unsupported image key.');
+  if (['keylogger-lab-v1', 'email-forensics-v1', 'file-forensics-v1', 'disk-forensics-v1'].includes(definition.profile as string)) {
+    const studentImageKey = (definition as { studentImageKey?: string }).studentImageKey;
+    const studentImage = approvedImages[studentImageKey as keyof typeof approvedImages];
+    if (!studentImage) {
+      throw new Error('Lab definition references an unsupported image key.');
+    }
+
+    return {
+      profile: definition.profile as 'keylogger-lab-v1' | 'email-forensics-v1' | 'file-forensics-v1' | 'disk-forensics-v1',
+      studentImage,
+    };
   }
 
-  return { profile: 'shell-target-v1' as const, studentImage, targetImage };
+  throw new Error(`Unsupported lab profile: ${String(definition.profile)}`);
 }
 
 /* ------------------------------------------------------------------ */
@@ -206,13 +233,28 @@ export async function provisionLab(input: { attemptId: string; studentId: string
       };
     }
 
-    const { studentImage, targetImage } = resolved;
-    const nmapLab = input.lab as Extract<LabDefinition, { profile: 'shell-target-v1' }>;
+    if (['keylogger-lab-v1', 'email-forensics-v1', 'file-forensics-v1', 'disk-forensics-v1'].includes(resolved.profile)) {
+      student = await docker.createContainer({
+        Image: (resolved as { studentImage: string }).studentImage,
+        name: studentName,
+        Hostname: 'kali-student',
+        Cmd: ['/bin/bash'],
+        Tty: true,
+        OpenStdin: true,
+        StdinOnce: false,
+        HostConfig: { ...studentResources, NetworkMode: networkName },
+        Labels: labels,
+      });
+      await student.start();
+      return { networkName, studentContainerId: student.id, studentContainerName: studentName };
+    }
+
+    const { studentImage, targetImage, targetHostname } = resolved as { studentImage: string; targetImage: string; targetHostname: string };
 
     target = await docker.createContainer({
       Image: targetImage,
       name: targetName,
-      Hostname: nmapLab.target.hostname,
+      Hostname: targetHostname,
       HostConfig: { ...targetResources, NetworkMode: networkName },
       Labels: labels,
     });

@@ -48,9 +48,12 @@ const ruleHandlers: Record<string, RuleHandler> = {
     }
 
     /* Definitions may constrain a hostname, but never permit arbitrary targets. */
-    const requiredTarget = (rule.requiredTarget ?? 'nmap-target').toLowerCase();
-    if (!tokens.some(token => token === requiredTarget || token === `http://${requiredTarget}` || token === `https://${requiredTarget}` || token.startsWith(`http://${requiredTarget}/`) || token.startsWith(`https://${requiredTarget}/`)) && !tokens.some(t => requiredTarget === 'nmap-target' && /^(\d{1,3}\.){3}\d{1,3}$/.test(t))) {
-      return { type: 'command', passed: false, message: `Command must target the lab host (${requiredTarget}).` };
+    const targetCheckRequired = rule.requiredTarget !== undefined ? rule.requiredTarget !== 'none' : tool === 'nmap';
+    if (targetCheckRequired) {
+      const requiredTarget = (rule.requiredTarget ?? 'nmap-target').toLowerCase();
+      if (!tokens.some(token => token === requiredTarget || token === `http://${requiredTarget}` || token === `https://${requiredTarget}` || token.startsWith(`http://${requiredTarget}/`) || token.startsWith(`https://${requiredTarget}/`)) && !tokens.some(t => requiredTarget === 'nmap-target' && /^(\d{1,3}\.){3}\d{1,3}$/.test(t))) {
+        return { type: 'command', passed: false, message: `Command must target the lab host (${requiredTarget}).` };
+      }
     }
 
     return { type: 'command', passed: true, message: 'Command syntax verified.' };

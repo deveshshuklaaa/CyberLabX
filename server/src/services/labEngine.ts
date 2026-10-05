@@ -175,6 +175,7 @@ async function waitForHealthy(containerId: string, timeoutMs = 60_000) {
 /*  Docker readiness check                                            */
 /* ------------------------------------------------------------------ */
 export async function assertDockerReady() {
+  if (env.LAB_BACKEND === 'qemu') return (await import('./vm/manager.js')).assertVmReady();
   await docker.ping();
 }
 
@@ -183,6 +184,12 @@ export async function assertDockerReady() {
 /* ------------------------------------------------------------------ */
 export async function provisionLab(input: { attemptId: string; studentId: string; lab: LabDefinition }) {
   const resolved = resolveLabDefinition(input.lab);
+  if (env.LAB_BACKEND === 'qemu') {
+    const vm = await (await import('./vm/manager.js')).createVm({ ...input, profile: resolved.profile,
+      expiresAt: new Date(Date.now() + env.LAB_TTL_MINUTES * 60000) });
+    return { vmAttemptId: vm.attemptId, backend: 'qemu' as const,
+      targetIp: ['shell-target-v1', 'recon-v1', 'dos-analysis-v1'].includes(resolved.profile) ? '172.28.0.10' : undefined };
+  }
   const tag = safeName(input.attemptId);
   const networkName = `${env.LAB_NETWORK_PREFIX}-${tag}`;
   const studentName = `cyberlabx-student-${tag}`;
@@ -292,11 +299,13 @@ export async function provisionLab(input: { attemptId: string; studentId: string
 /*  Cleanup lab Docker resources — idempotent                         */
 /* ------------------------------------------------------------------ */
 export async function cleanupLab(session: {
+  vmAttemptId?: string;
   studentContainerId?: string;
   targetContainerId?: string;
   networkName?: string;
   resources?: { containerId: string }[];
 }) {
+  if (session.vmAttemptId) await (await import('./vm/manager.js')).destroyVm(session.vmAttemptId);
   for (const resource of session.resources ?? []) {
     await removeQuietly(() => docker.getContainer(resource.containerId).remove({ force: true }));
   }
@@ -314,7 +323,8 @@ export async function cleanupLab(session: {
 /* ------------------------------------------------------------------ */
 /*  Inspect whether a lab is still running                            */
 /* ------------------------------------------------------------------ */
-export async function inspectLab(session: { studentContainerId?: string }) {
+export async function inspectLab(session: { studentContainerId?: string; vmAttemptId?: string }) {
+  if (session.vmAttemptId) return (await import('./vm/manager.js')).getVmStatus(session.vmAttemptId);
   if (!session.studentContainerId) return false;
   try {
     return (await docker.getContainer(session.studentContainerId).inspect()).State.Running;
@@ -426,10 +436,11 @@ export async function expireLabs() {
 /* ------------------------------------------------------------------ */
 export async function recoverOrphanedLabs() {
   let recovered = 0;
+  if (env.LAB_BACKEND === 'qemu') await (await import('./vm/manager.js')).recoverOrphanedVms();
 
   /* ── 1. Recover stale DB sessions ─────────────────────────────── */
   const staleSessions = await LabSession.find({
-    status: { $in: ['provisioning', 'running'] },
+    status: { $in: ['provisioning', 'running', 'stopping'] },
   });
 
   for (const session of staleSessions) {

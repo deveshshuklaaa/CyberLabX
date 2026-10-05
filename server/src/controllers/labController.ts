@@ -6,9 +6,10 @@ import { LabSession } from '../models/LabSession.js';
 import { assertDockerReady, cleanupLab, inspectLab, provisionLab, resolveLabDefinition } from '../services/labEngine.js';
 import { env } from '../config/env.js';
 
-function sessionResponse(session: { _id: unknown; attemptId?: unknown; status: string; targetIp?: string; targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: unknown[]; expiresAt: Date; failureReason?: string }) {
+function sessionResponse(session: { _id: unknown; vmAttemptId?: string; attemptId?: unknown; status: string; targetIp?: string; targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: unknown[]; expiresAt: Date; failureReason?: string }) {
   return {
     id: session._id,
+    desktopAvailable: Boolean(session.vmAttemptId) && session.status === 'running',
     attemptId: session.attemptId,
     status: session.status,
     targetIp: session.targetIp,
@@ -55,7 +56,7 @@ export const startLab = asyncHandler(async (req, res) => {
           : experiment.lab.profile === 'dos-analysis-v1'
             ? 'Controlled HTTP victim'
             : 'Internal Forensic Sandbox',
-      terminalPrompt: experiment.lab.terminal.promptLabel,
+      terminalPrompt: env.LAB_BACKEND === 'qemu' ? 'student@somaiya:~$' : experiment.lab.terminal.promptLabel,
       terminalUser: experiment.lab.profile === 'dos-analysis-v1' ? 'student' : undefined,
       startedAt: new Date(),
       lastHeartbeatAt: new Date(),
@@ -65,6 +66,7 @@ export const startLab = asyncHandler(async (req, res) => {
     await attempt.save();
     res.status(201).json({ labSession: sessionResponse(session), attemptId: attempt._id });
   } catch (error) {
+    await cleanupLab(session);
     session.status = 'failed';
     session.failureReason = error instanceof Error ? error.message : 'Lab provisioning failed.';
     await session.save();
@@ -80,7 +82,8 @@ export const getLab = asyncHandler(async (req, res) => {
   const running = session.status === 'running' && await inspectLab(session);
   if (!running && session.status === 'running') {
     session.status = 'failed';
-    session.failureReason = 'Student container is no longer running.';
+    await cleanupLab(session);
+    session.failureReason = 'The Kali environment is no longer running.';
     await session.save();
   }
   res.json({ labSession: sessionResponse(session) });

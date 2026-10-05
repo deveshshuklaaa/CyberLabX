@@ -6,11 +6,14 @@ import { LabSession } from '../models/LabSession.js';
 import { Attempt } from '../models/Attempt.js';
 import { CommandLog } from '../models/CommandLog.js';
 import { getShellStream } from '../services/labEngine.js';
+import { authorizeVm } from '../services/vm/access.js';
+import { openTerminal } from '../services/vm/manager.js';
 
 /* ------------------------------------------------------------------ */
 /*  Per-session terminal state                                        */
 /* ------------------------------------------------------------------ */
 interface TerminalEntry {
+    resize?: (cols: number, rows: number) => void;
     stream: NodeJS.WritableStream;
     sockets: Set<string>;
     /** Rolling window of recent output (for command-log context). */
@@ -64,11 +67,12 @@ export function attachTerminalSocket(io: Server) {
     /* ── Auth middleware ──────────────────────────────────────────── */
     io.use(async (socket, next) => {
         try {
+            if (socket.handshake.headers.origin !== new URL(env.CLIENT_URL).origin) return next(new Error('Unauthorized origin'));
             const token = cookieValue(socket.handshake.headers.cookie, 'cyberlabx_session');
             if (!token) return next(new Error('Unauthorized'));
             const payload = jwt.verify(token, env.JWT_SECRET) as { sub: string };
             const user = await User.findById(payload.sub);
-            if (!user?.isActive) return next(new Error('Unauthorized'));
+            if (!user?.isActive || user.role !== 'student') return next(new Error('Unauthorized'));
             socket.data.user = user;
             next();
         } catch {
@@ -79,6 +83,7 @@ export function attachTerminalSocket(io: Server) {
     io.on('connection', (socket: Socket) => {
         /* ── terminal:join ─────────────────────────────────────────── */
         socket.on('terminal:join', async (payload: unknown) => {
+          try {
             const labSessionId = (payload as { labSessionId?: unknown })?.labSessionId;
             if (!validSessionId(labSessionId)) {
                 return socket.emit('terminal:error', { message: 'Invalid lab session.' });
@@ -89,17 +94,20 @@ export function attachTerminalSocket(io: Server) {
                 studentId: user._id,
                 status: 'running',
             });
-            if (!session?.studentContainerId) {
+            if (!session || (!session.studentContainerId && !session.vmAttemptId) || session.expiresAt <= new Date()) {
                 return socket.emit('terminal:error', { message: 'This lab terminal is unavailable.' });
             }
 
             const key = String(session._id);
+            if (session.vmAttemptId) await authorizeVm(key, String(user._id));
             let item = streams.get(key);
 
             if (!item) {
                 try {
-                    const shell = await getShellStream(session.studentContainerId, session.terminalUser);
-                    item = { stream: shell.input, sockets: new Set(), output: '', commandBuf: '', commandStartedAt: null, outputSinceCommand: '', capturingCommandOutput: false };
+                    const shell = session.vmAttemptId
+                        ? await openTerminal(session.vmAttemptId)
+                        : await getShellStream(session.studentContainerId!, session.terminalUser);
+                    item = { resize: 'resize' in shell ? shell.resize : undefined, stream: shell.input, sockets: new Set(), output: '', commandBuf: '', commandStartedAt: null, outputSinceCommand: '', capturingCommandOutput: false };
                     streams.set(key, item);
 
                     shell.output.on('data', (data: Buffer) => {
@@ -125,10 +133,22 @@ export function attachTerminalSocket(io: Server) {
             const restored = Boolean(item.output);
             if (restored) socket.emit('terminal:output', item.output);
             socket.emit('terminal:ready', { restored });
+          } catch { socket.emit('terminal:error', { message: 'Terminal session is unavailable.' }); }
+        });
+
+        socket.on('terminal:resize', async (payload: { labSessionId?: string; cols?: number; rows?: number }) => {
+            try {
+                if (!validSessionId(payload?.labSessionId) || !Number.isInteger(payload.cols) || !Number.isInteger(payload.rows)) return;
+                const item = streams.get(payload.labSessionId);
+                if (!item?.sockets.has(socket.id)) return;
+                await authorizeVm(payload.labSessionId, String(socket.data.user._id));
+                item.resize?.(Math.min(300, Math.max(20, payload.cols!)), Math.min(150, Math.max(5, payload.rows!)));
+            } catch { socket.emit('terminal:error', { message: 'Terminal session is unavailable.' }); }
         });
 
         /* ── terminal:input ────────────────────────────────────────── */
         socket.on('terminal:input', async (payload: unknown) => {
+          try {
             const labSessionId = (payload as { labSessionId?: unknown })?.labSessionId;
             const data = (payload as { data?: unknown })?.data;
             if (!validSessionId(labSessionId)) return socket.emit('terminal:error', { message: 'Invalid lab session.' });
@@ -141,9 +161,10 @@ export function attachTerminalSocket(io: Server) {
                 status: 'running',
             });
             const item = streams.get(labSessionId);
-            if (!session || !item || !item.sockets.has(socket.id)) {
+            if (!session || session.expiresAt <= new Date() || !item || !item.sockets.has(socket.id)) {
                 return socket.emit('terminal:error', { message: 'Terminal session is unavailable.' });
             }
+            if (session.vmAttemptId) await authorizeVm(labSessionId, String(user._id));
 
             // Always forward raw data to the container (preserves xterm.js behavior)
             item.stream.write(data);
@@ -185,7 +206,7 @@ export function attachTerminalSocket(io: Server) {
                                 studentId: user._id,
                                 sessionId: session._id,
                                 command,
-                                stdout: item.output.slice(-10_000),
+                                stdout: '',
                                 stderr: '',
                                 durationMs,
                             }).catch(() => { /* best-effort logging */ });
@@ -205,6 +226,7 @@ export function attachTerminalSocket(io: Server) {
                 if (item.commandStartedAt === null) item.commandStartedAt = Date.now();
                 item.commandBuf = (item.commandBuf + ch).slice(-2000);
             }
+          } catch { socket.emit('terminal:error', { message: 'Terminal session is unavailable.' }); }
         });
 
         /* ── disconnect ────────────────────────────────────────────── */

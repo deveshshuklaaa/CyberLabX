@@ -1,6 +1,7 @@
 # Checkpoint 3 acceptance: live integration, browser and final regression
 
 Assessment date: 2026-10-24. Branch: `integration/local-takeover`.
+Login rate-limit follow-up starting HEAD: `e2c493ca77fdf9041ab0c4aa720cbb24dc854a73`.
 Checkpoint 3C starting HEAD: `5875b6faa27e0f8112ea8fe582c80a0ee9db22dc`.
 Checkpoint 3B starting HEAD: `a4875de26c59e977c6fd8e716c424d194d4295a8`.
 Application source is unchanged from `d25208514f7a7c1d8317bfad2bae60e3ff65a2f2`.
@@ -536,6 +537,117 @@ Client build retains its existing >500 kB chunk advisory: JavaScript 768.84 kB /
 rule, dependency or application file was changed. Dependency audit findings
 were not rescanned or repaired in this stage.
 
+## Login rate-limit observation: local follow-up
+
+### Configuration and cause
+
+The actual `server/src/routes/authRoutes.ts` creates one `loginLimiter` with
+`windowMs: 15 * 60 * 1000`, `limit: 10`, `standardHeaders: true`,
+`legacyHeaders: false`, and message
+`Too many login attempts. Try again later.`. That same instance protects:
+
+- POST `/api/auth/register` and POST `/api/auth/login`.
+- GET `/api/auth/google`, POST `/api/auth/google/link`, and GET
+  `/api/auth/google/callback`.
+
+GET `/api/auth/me` and POST `/api/auth/logout` are not behind this limiter.
+Installed `express-rate-limit` is 8.6.2. Its inspected defaults use an IP-derived
+key and an in-process MemoryStore; neither successful nor failed requests are
+skipped. A browser profile/account change does not give another allowance when
+the requests have the same IP. This is not a per-account password lockout.
+`standardHeaders: true` resolves to draft-6 headers in this installed version.
+The limiter rejects over-budget requests before the login controller can call
+`setSessionCookie`.
+
+Automated acceptance work issued repeated real logins from the local machine,
+including successful logins, and therefore consumed this shared budget. The
+3B retained browser evidence alone contains six successful login responses;
+there were also exploratory runs and two concurrency-harness faculty logins.
+The 3C controlled-history workflow records three more successful logins. These
+counts span different times/windows and must not be summed as one exact window.
+The observed exhaustion is consistent with automation plus manual retries; the
+in-memory counter does not retain a historical per-request attribution log.
+It is not possible to prove automation alone caused the user's original 429
+or assign every prior request to a person/tool from the retained evidence.
+
+### Actual response and rendered UI evidence
+
+This follow-up used only the existing dedicated student in an isolated Chrome
+context and did not change its credentials. The first normal login used the
+last permitted slot (200 with Remaining 0). One follow-up, rather than a burst
+to manufacture exhaustion, captured the actual rejection:
+
+| Observation | Initial accepted login | Following blocked login |
+| --- | --- | --- |
+| UTC timestamp | `2026-10-24T12:41:51.814Z` | `2026-10-24T12:42:35.246Z` |
+| HTTP method/path | POST `/api/auth/login` | POST `/api/auth/login` |
+| Actual status | 200 | **429** |
+| `Date` | `Sat, 24 Oct 2026 12:41:51 GMT` | `Sat, 24 Oct 2026 12:42:35 GMT` |
+| `RateLimit-Limit` | `10` | `10` |
+| `RateLimit-Policy` | `10;w=900` | `10;w=900` |
+| `RateLimit-Remaining` | `0` | `0` |
+| `RateLimit-Reset` | `378` | `334` |
+| `Retry-After` | Not present | `334` |
+| Session-cookie set | Yes; normal accepted login | **No** |
+
+Headers above were captured through browser automation's network response API,
+not by printing complete headers. No cookie value, credential or JWT was
+logged. Legacy `X-RateLimit-*` headers are disabled. The reset/retry values are
+seconds remaining, not a Unix timestamp. Both observations point to approximately
+`2026-10-24T12:48:09Z` for reset.
+
+`client/src/services/api.ts` returns the backend response's `message` through
+`errorMessage`. `Login.tsx` catches it, displays it in a `role="alert"` panel,
+and clears the submitting state in `finally`. No automatic login retry loop is
+implemented there. Browser verification confirmed the exact useful rate-limit
+message under the generic Authentication failed heading, with the submit button
+enabled again. The current UI says to retry later; it does not show a countdown.
+
+The blocked context had no `cyberlabx_session` cookie, the 429 response did not set
+one, and GET `/api/auth/me` returned **401**. Thus the tested rejection did not
+create an unexpected authenticated session. It does not imply that an existing
+valid session in another context would be revoked by a 429.
+
+A screenshot with both credential inputs masked is retained locally at
+`.env.login-rate-evidence/login-rate-limit.png`. Sanitized status/header evidence
+is in `.env.login-rate-evidence/initial-normal-login.json` and
+`.env.login-rate-evidence/results.json`; the local harness
+`server/.env.login-rate-investigation.mjs` is ignored. These are separate from
+the existing 49 acceptance screenshots and do not repeat that matrix.
+Screenshot SHA-256:
+`82D6D47004160180DB4FA747539A89BD2A2DB855E7B13F9BF0997DBA1874BE1F`.
+
+The harness waited the received Retry-After plus two seconds, then submitted
+exactly one post-window login. No authentication requests were sent during the
+wait. No restart, store reset, IP/header manipulation, bypass, limit increase,
+or security change was used.
+
+| Post-window observation | Actual result |
+| --- | --- |
+| UTC timestamp | `2026-10-24T12:48:11.541Z` (18:18:11 IST) |
+| POST `/api/auth/login` | **200**, normal password login in the same browser context |
+| `Date` | `Sat, 24 Oct 2026 12:48:11 GMT` |
+| `RateLimit-Limit` / `RateLimit-Policy` | `10` / `10;w=900` |
+| `RateLimit-Remaining` / `RateLimit-Reset` | **`9` / `900`**, fresh window |
+| `Retry-After` | Not present |
+| Session cookie | Set by accepted login; browser reached `/student` |
+| GET `/api/auth/me` | **200**, correct existing authorized test account restored |
+| POST `/api/auth/logout` | **204**, session cookie removed from browser context |
+| GET `/api/auth/me` after logout | **401**, no longer authenticated |
+
+All eleven rejection/recovery assertions in this run passed. No account or
+academic record was created/changed by this investigation; the authentication
+service only reads the account and compares its password before issuing the
+existing cookie. Full regression suites were not repeated for this documentation-
+only follow-up; the freshly executed 3C results above remain the latest baseline.
+
+Conclusion: the displayed message represents the expected shared IP-budget
+exhaustion, not evidence of invalid credentials or an enrollment/session defect.
+Automated logins contributed to that budget. The exact allocation of earlier
+requests among automation and manual attempts is not recoverable from the
+available history. A normal login/session/logout worked after genuine window
+expiry; the security limit and existing authentication contracts remain intact.
+
 ## Final acceptance classification and local handoff
 
 | Classification | Evidence / remaining scope |
@@ -544,6 +656,7 @@ were not rescanned or repaired in this stage.
 | **Passed** | 3B rendered browser matrix: 44 combinations, 49 screenshots in the recorded ignored directory; not repeated in 3C |
 | **Passed** | Real nonempty attempt/report/PDF preservation, unchanged identity, ownership restrictions, authorized removal and reassignment |
 | **Passed** | Fresh 262 server / 147 client tests, both builds and client lint |
+| **Passed** | Live login 429, useful rendered error, no new session on rejection, and normal login/me/logout after unmodified window expiry |
 | **Failed (known baseline)** | Server lint: the three exact existing unused-symbol errors above |
 | **Blocked** | No requested history/regression check was blocked. Meaningful category filtering has a later API/UI dependency because the list response omits category; no fix attempted |
 | **Not tested** | Headed Edge/Chrome, real touch hardware, screen-reader/full keyboard audit, populated-history browser rendering after 3C |
@@ -563,5 +676,5 @@ Branch is `integration/local-takeover`; starting HEAD is recorded at the top and
 the resulting documentation commit SHA is supplied in the completion report.
 
 Services remain running; no GitHub push, PR action, remote branch change or
-deployment occurred. Stop after Checkpoint 3C for review before teacher enrollment
-UI integration or additional API development.
+deployment occurred. Stop after Checkpoint 3C and this login-limiter follow-up
+for review before teacher enrollment UI integration or additional API development.

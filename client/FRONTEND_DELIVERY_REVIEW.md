@@ -1,3 +1,8 @@
+> Historical frontend-only delivery evidence for commit 979aa05. The local takeover
+> now includes the enrollment backend: faculty metrics are enrolled-cohort scoped,
+> and enrollment APIs exist but are not wired into the UI. See
+> `../docs/LOCAL_INTEGRATION_STAGE1.md` and `../docs/student-enrollment.md`.
+
 # Frontend delivery review
 
 Date: 2026-10-24 (Asia/Calcutta)

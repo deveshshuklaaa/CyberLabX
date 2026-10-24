@@ -1,3 +1,4 @@
+import { useSessionStore } from '../store/sessionStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,24 +11,25 @@ function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><FacultyDashboard /></QueryClientProvider>);
 }
-beforeEach(() => { vi.clearAllMocks(); });
+beforeEach(() => { vi.clearAllMocks(); useSessionStore.setState({ user: { id: 'teacher', firstName: 'Test', lastName: 'Teacher', email: 'teacher@example.test', role: 'faculty', isActive: true } }); });
 describe('Teacher overview', () => {
-  it('displays all four real metrics with clear platform scope and definitions', async () => {
+  it('displays all four real metrics with clear enrolled-cohort scope and definitions', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { metrics } }); setup();
-    const summary = within(screen.getByRole('region', { name: 'Platform summary' }));
+    const summary = within(screen.getByRole('region', { name: 'Enrolled cohort summary' }));
     expect(await summary.findByText('28')).toBeInTheDocument();
     expect(summary.getByText('63')).toBeInTheDocument();
     expect(summary.getByText('84%')).toBeInTheDocument();
     expect(summary.getByText('51')).toBeInTheDocument();
     expect(summary.getByText('Active students')).toBeInTheDocument();
-    expect(summary.getByText(/including repeated experiments/)).toBeInTheDocument();
-    expect(screen.getByText(/not restricted to an assigned class/)).toBeInTheDocument();
+    expect(summary.getByText(/including repeats and history before enrollment/)).toBeInTheDocument();
+    expect(screen.getByText(/students currently enrolled with you/)).toBeInTheDocument();
+    expect(screen.getByText(/inactive enrolled students/)).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/faculty/dashboard');
   });
   it('shows pending sections without invented student records, charts or report downloads', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { metrics } }); setup();
     await screen.findByText('28');
-    expect(screen.getByRole('region', { name: 'Student monitoring' })).toHaveTextContent('Student directory unavailable');
+    expect(screen.getByRole('region', { name: 'Student monitoring' })).toHaveTextContent('Student monitoring UI pending');
     expect(screen.getByRole('region', { name: 'Experiment performance' })).toHaveTextContent('Experiment breakdown unavailable');
     expect(screen.getByRole('region', { name: 'Reports and assessment review' })).toHaveTextContent('Teacher report browser unavailable');
     expect(screen.getAllByText('Pending integration')).toHaveLength(4);
@@ -38,15 +40,15 @@ describe('Teacher overview', () => {
   });
   it('distinguishes empty metrics from pending integrations', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { metrics: { students: 0, completedAttempts: 0, averageScore: 0, reports: 0 } } }); setup();
-    expect(await screen.findByText('No student activity recorded yet')).toBeInTheDocument();
+    expect(await screen.findByText('No enrolled cohort activity recorded yet')).toBeInTheDocument();
     expect(screen.getByText('0%')).toBeInTheDocument();
     expect(screen.getByText('No reports recorded yet.')).toBeInTheDocument();
-    expect(screen.getByText('Student directory unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Student monitoring UI pending')).toBeInTheDocument();
   });
   it('does not treat active students as completed learning activity', async () => {
     vi.mocked(api.get).mockResolvedValue({ data: { metrics: { ...metrics, completedAttempts: 0 } } }); setup();
     expect(await screen.findByText(/No completed attempts yet/)).toBeInTheDocument();
-    expect(screen.queryByText('No student activity recorded yet')).not.toBeInTheDocument();
+    expect(screen.queryByText('No enrolled cohort activity recorded yet')).not.toBeInTheDocument();
   });
   it('supports refresh and displays the newly returned totals', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({ data: { metrics } }).mockResolvedValue({ data: { metrics: { ...metrics, students: 29 } } }); setup();
@@ -59,6 +61,16 @@ describe('Teacher overview', () => {
     vi.mocked(api.get).mockResolvedValue({ data: { metrics: { students: 28 } } }); setup();
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load dashboard data.');
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
-    expect(screen.queryByText('No student activity recorded yet')).not.toBeInTheDocument();
+    expect(screen.queryByText('No enrolled cohort activity recorded yet')).not.toBeInTheDocument();
   });
+  it('keeps admin metrics platform-wide without calling faculty-only student routes', async () => {
+    useSessionStore.setState({ user: { ...useSessionStore.getState().user!, role: 'admin' } });
+    vi.mocked(api.get).mockResolvedValue({ data: { metrics } }); setup();
+    const summary = within(screen.getByRole('region', { name: 'Platform summary' }));
+    expect(await summary.findByText('28')).toBeInTheDocument();
+    expect(screen.getByText(/platform-wide laboratory/)).toBeInTheDocument();
+    expect(screen.getByText(/explicitly selected teacher/)).toBeInTheDocument();
+    expect(vi.mocked(api.get).mock.calls.every(([path]) => path === '/faculty/dashboard')).toBe(true);
+  });
+
 });

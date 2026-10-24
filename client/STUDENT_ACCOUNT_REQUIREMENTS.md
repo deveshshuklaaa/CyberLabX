@@ -18,3 +18,10 @@ Future functionality requires coordinated backend contracts before frontend work
 
 Progress and history share the `{ attempts: [...] }` query response. Errors remain
 visible rather than substituting the dashboard's five recent attempts for full history.
+
+
+Local integration update: `GET /api/student/enrollment` now supplies the student's
+own relationship and safe teacher information separately from `/auth/me`.
+The public authenticated user shape remains unchanged. A frontend enrollment
+section is still pending; see `docs/student-enrollment.md` for active, inactive,
+unassigned and deleted/demoted teacher cases. No enrollment UI is added in Stage 1.

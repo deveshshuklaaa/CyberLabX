@@ -15,11 +15,32 @@ or `admin` role. The UI preserves `/teacher` and `/faculty` and existing guards.
 - `averageScore`: rounded mean score of completed attempts, or zero when empty.
 - `reports`: count of report records.
 
-These are platform aggregates, without assigned-class/cohort scoping. There are
+After local integration, faculty requests are scoped to currently enrolled students;
+admin requests retain platform-wide aggregates. The student count includes active
+enrolled accounts; attempts, scores and reports include enrolled inactive students
+and history before enrollment. There are
 no student rows, experiment breakdowns, report identifiers or enrollment actions
 in this response. The UI requests only the existing faculty dashboard endpoint.
 Existing attempt, student-history and report routes are student-only; teacher
 screens must not reuse them to request another student's records.
+
+## Local integration contract update
+
+`docs/student-enrollment.md` is now authoritative for the implemented enrollment
+contract. Teacher/faculty list, aggregate student detail, enrollment by ID/exact
+email and removal are implemented. Admin equivalents require an explicit teacher
+ID; faculty endpoints do not accept admin impersonation. Student own-enrollment
+lookup is implemented at `GET /api/student/enrollment`.
+
+The frontend does not consume these endpoints yet. This is pending UI integration,
+not a missing enrollment backend. General admin user/teacher directories,
+individual teacher attempt/report access, per-experiment analytics and experiment
+CRUD remain missing. Lists accept page/limit only; no fuzzy search or class model
+is provided. Enrollment progress averages completed attempts, not best-per-experiment
+scores. Do not substitute student-only history/report routes.
+
+The original requirements below describe broader future functionality and are
+partially satisfied by this contract; unsupported portions remain proposals.
 
 ## Contracts to agree before enabling features
 
@@ -123,7 +144,9 @@ No GET user listing route is assumed or requested by Stage 6.
 Agree faculty-filtered directory/details, authorized cohort/class assignments,
 enrollment relationships and supported assignment mutations. Define whether teacher
 account creation alone has any teaching scope (none is inferred by the UI).
-Existing admin creation supports role faculty, but cannot establish assignments.
+Existing admin creation supports role faculty. Separate teacher-scoped enrollment
+APIs now establish a single student-teacher relationship; the frontend teacher
+selection and enrollment flow remains unimplemented. Class/cohort models are not supplied.
 
 ### Missing experiment management contracts
 

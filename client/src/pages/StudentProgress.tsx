@@ -1,286 +1,44 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import {
-  Award,
-  BookOpen,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
-  FileText,
-  Play,
-  RotateCcw,
-  Target,
-  TrendingUp,
-} from 'lucide-react';
 import { api } from '../services/api';
-import type { Experiment, StudentDashboardData, StudentHistoryData } from '../types/api';
-
-const dateTime = (value?: string) =>
-  value
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
-    : '—';
+import type { StudentDashboardData } from '../types/api';
+import { useCatalogue } from '../services/catalogue';
+import { attemptDate, useStudentHistory } from '../services/studentHistory';
+import { PageHeading } from '../components/common/PageHeading';
+import { LoadingState, ErrorState } from '../components/common/QueryState';
+import { AttemptStatus } from '../components/common/AttemptStatus';
 
 export function StudentProgress() {
-  const dashboard = useQuery({
-    queryKey: ['student-dashboard'],
-    queryFn: () => api.get<StudentDashboardData>('/student/dashboard').then(r => r.data),
-  });
-
-  const experiments = useQuery({
-    queryKey: ['experiments'],
-    queryFn: () => api.get<{ experiments: Experiment[] }>('/experiments').then(r => r.data),
-  });
-
-  const history = useQuery({
-    queryKey: ['student-history'],
-    queryFn: () =>
-      api.get<StudentHistoryData>('/student/history').then(r => r.data).catch(() => ({
-        attempts: dashboard.data?.recentAttempts ?? [],
-      })),
-    enabled: Boolean(dashboard.data),
-  });
-
-  const isLoading = dashboard.isLoading || experiments.isLoading;
-  const isError = dashboard.isError || experiments.isError;
-
+  const dashboard = useQuery({ queryKey: ['student-dashboard'], queryFn: () => api.get<StudentDashboardData>('/student/dashboard').then(response => response.data) });
+  const catalogue = useCatalogue();
+  const history = useStudentHistory();
   const stats = dashboard.data?.stats;
-  const allExperiments = experiments.data?.experiments ?? [];
-  const allAttempts = history.data?.attempts ?? dashboard.data?.recentAttempts ?? [];
-
-  // Calculate percentage of curriculum completed
-  const curriculumPercent =
-    stats && stats.totalExperiments > 0
-      ? Math.round((stats.experimentsCompleted / stats.totalExperiments) * 100)
-      : 0;
-
-  return (
-    <div className="space-y-8">
-      {/* ── Page Header ── */}
-      <div className="border-b border-line pb-5">
-        <div className="flex items-center gap-2 mb-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/5 border border-brand/20 px-2.5 py-0.5 rounded">
-            Somaiya Vidyavihar University
-          </span>
-          <span className="text-xs font-semibold text-muted bg-canvas border border-line px-2.5 py-0.5 rounded">
-            Academic Performance Evaluation
-          </span>
-        </div>
-        <h1 className="text-2xl sm:text-3xl font-black text-ink uppercase tracking-tight font-sans">
-          My Academic Progress
-        </h1>
-        <p className="mt-1 text-sm text-muted max-w-3xl leading-relaxed">
-          Detailed evaluation records, curriculum completion metrics, and scoring breakdowns calculated from verified laboratory attempts.
-        </p>
+  const experiments = catalogue.data?.experiments ?? [];
+  const percent = stats && stats.totalExperiments > 0 ? Math.round(stats.experimentsCompleted / stats.totalExperiments * 100) : 0;
+  return <div className="space-y-8">
+    <PageHeading title="My Learning Progress" eyebrow="Somaiya Virtual Labs" description="Track completed experiments and your best recorded scores. Completion means a completed attempt, rather than time spent or tasks viewed." actions={<Link to="/experiments" className="button">Browse experiments</Link>} />
+    {dashboard.isPending ? <LoadingState message="Loading progress summary..." /> : dashboard.isError ? <ErrorState message="Unable to load progress summary." onRetry={() => { void dashboard.refetch(); }} retrying={dashboard.isFetching} /> : stats && <section aria-label="Progress summary" className="space-y-4">
+      <div className="panel p-6 space-y-3"><h2 className="text-lg font-bold">Curriculum completion</h2><p>{stats.experimentsCompleted} completed / {stats.totalExperiments} published experiments</p>
+        {stats.totalExperiments > 0 ? <><progress className="w-full h-3 accent-brand" aria-label="Curriculum completion" max={100} value={Math.min(100, percent)} /><p className="text-sm text-muted">{percent}% against the current published catalogue. Summary totals include your recorded completed experiments.</p></> : <p className="text-sm text-muted">No published experiments are currently available.</p>}
       </div>
-
-      {isLoading && (
-        <div className="panel p-12 text-center" data-testid="progress-page-loading">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand border-t-transparent mb-3" />
-          <p className="text-sm text-muted">Calculating academic progress metrics…</p>
-        </div>
-      )}
-
-      {isError && (
-        <div className="panel p-6 border-danger/30 bg-danger/5" data-testid="progress-page-error">
-          <p className="text-sm font-semibold text-danger">Unable to load progress data. Please try again later.</p>
-        </div>
-      )}
-
-      {!isLoading && !isError && stats && (
-        <>
-          {/* ── Overall Academic Progress Summary ── */}
-          <section className="space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-ink">Overall Curriculum Summary</h2>
-
-            {/* Curriculum Progress Bar Card */}
-            <div className="panel p-6 bg-surface border border-line shadow-xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                <div>
-                  <h3 className="text-base font-bold text-ink">Curriculum Completion</h3>
-                  <p className="text-xs text-muted">
-                    {stats.experimentsCompleted} of {stats.totalExperiments} required practical laboratories successfully completed
-                  </p>
-                </div>
-                <span className="text-2xl font-black text-brand font-sans">{curriculumPercent}%</span>
-              </div>
-              <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden border border-line">
-                <div
-                  className="bg-brand h-full rounded-full transition-all duration-500"
-                  style={{ width: `${curriculumPercent}%` }}
-                />
-              </div>
-            </div>
-
-            {/* 4 Restrained Academic Stat Cards */}
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="panel p-5 bg-surface border border-line shadow-xs flex items-center gap-3.5">
-                <div className="p-3 rounded-lg bg-brand/10 text-brand shrink-0">
-                  <CheckCircle2 size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-ink font-sans leading-none">
-                    {stats.experimentsCompleted} / {stats.totalExperiments}
-                  </p>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mt-1">Completed Labs</p>
-                </div>
-              </div>
-
-              <div className="panel p-5 bg-surface border border-line shadow-xs flex items-center gap-3.5">
-                <div className="p-3 rounded-lg bg-brand/10 text-brand shrink-0">
-                  <Target size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-ink font-sans leading-none">{stats.averageScore}%</p>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mt-1">Average Grade</p>
-                </div>
-              </div>
-
-              <div className="panel p-5 bg-surface border border-line shadow-xs flex items-center gap-3.5">
-                <div className="p-3 rounded-lg bg-brand/10 text-brand shrink-0">
-                  <Award size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-ink font-sans leading-none">{stats.bestScore}%</p>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mt-1">Best Score</p>
-                </div>
-              </div>
-
-              <div className="panel p-5 bg-surface border border-line shadow-xs flex items-center gap-3.5">
-                <div className="p-3 rounded-lg bg-brand/10 text-brand shrink-0">
-                  <BookOpen size={20} />
-                </div>
-                <div>
-                  <p className="text-2xl font-black text-ink font-sans leading-none">{stats.experimentsAttempted}</p>
-                  <p className="text-xs font-bold text-muted uppercase tracking-wider mt-1">Total Attempts</p>
-                </div>
-              </div>
-            </div>
-          </section>
-
-          {/* ── Per-Experiment Progress Breakdown ── */}
-          <section className="space-y-4">
-            <div className="flex items-center justify-between border-b border-line pb-3">
-              <div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-ink">
-                  Individual Practical Progress
-                </h2>
-                <p className="text-xs text-muted">Authoritative status for each laboratory in the academic syllabus</p>
-              </div>
-              <span className="text-xs text-muted font-medium bg-canvas px-2.5 py-1 rounded border border-line">
-                {allExperiments.length} Practicals
-              </span>
-            </div>
-
-            <div className="space-y-4" data-testid="experiment-progress-list">
-              {allExperiments.map(exp => {
-                const expAttempts = allAttempts.filter(
-                  a => a.experimentId === exp._id || a.experimentTitle === exp.title
-                );
-                const completedAttempts = expAttempts.filter(a => a.status === 'completed');
-                const isCompleted = completedAttempts.length > 0;
-                const isRunning = expAttempts.some(a => a.status === 'running');
-                const hasAttempts = expAttempts.length > 0;
-                const bestScore = isCompleted
-                  ? Math.max(...completedAttempts.map(a => a.score ?? 0))
-                  : null;
-                const latestAttempt = expAttempts[0];
-
-                return (
-                  <article
-                    key={exp._id}
-                    className="panel p-6 bg-surface border border-line shadow-xs relative overflow-hidden"
-                  >
-                    <div
-                      className={`absolute top-0 left-0 bottom-0 w-1.5 ${
-                        isCompleted ? 'bg-emerald-600' : isRunning ? 'bg-amber-500' : hasAttempts ? 'bg-slate-400' : 'bg-line'
-                      }`}
-                    />
-
-                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pl-2">
-                      <div className="space-y-2 max-w-2xl">
-                        <div className="flex flex-wrap items-center gap-2 text-xs">
-                          <span className="font-bold text-brand uppercase tracking-wider bg-brand/5 border border-brand/20 px-2 py-0.5 rounded">
-                            {exp.category ?? 'Network Security'}
-                          </span>
-                          <span className="text-muted bg-canvas border border-line px-2 py-0.5 rounded">
-                            Level: {exp.difficulty}
-                          </span>
-                          <span className="text-muted bg-canvas border border-line px-2 py-0.5 rounded flex items-center gap-1">
-                            <Clock size={12} />
-                            <span>{exp.estimatedTimeMinutes} min</span>
-                          </span>
-                        </div>
-
-                        <h3 className="text-lg font-bold text-ink">{exp.title}</h3>
-                        <p className="text-xs text-muted leading-relaxed">{exp.description}</p>
-
-                        <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-muted">
-                          <span>
-                            Attempts logged: <strong className="text-ink">{expAttempts.length}</strong>
-                          </span>
-                          <span>•</span>
-                          <span>
-                            Last activity:{' '}
-                            <strong className="text-ink">
-                              {latestAttempt ? dateTime(latestAttempt.completedAt ?? latestAttempt.startedAt) : 'Never attempted'}
-                            </strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Right Evaluation Status & CTA */}
-                      <div className="flex flex-col sm:flex-row lg:flex-col items-start lg:items-end justify-between gap-3 shrink-0 pt-3 lg:pt-0 border-t lg:border-t-0 border-line">
-                        <div className="flex items-center gap-3">
-                          {isCompleted ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                              <CheckCircle2 size={14} />
-                              <span>Completed · {bestScore}/100</span>
-                            </span>
-                          ) : isRunning ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                              <RotateCcw size={14} className="animate-spin" />
-                              <span>In Progress</span>
-                            </span>
-                          ) : hasAttempts ? (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
-                              <span>Incomplete</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-canvas text-muted border border-line">
-                              <span>Not Started</span>
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {latestAttempt?.reportAvailable && latestAttempt.reportId && (
-                            <a
-                              href={`${api.defaults.baseURL}/reports/${latestAttempt.reportId}/download`}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="button-secondary text-xs py-1.5 px-3 gap-1"
-                            >
-                              <FileText size={13} />
-                              <span>Report</span>
-                            </a>
-                          )}
-                          <Link
-                            to={`/experiments/${exp._id}`}
-                            className="button text-xs py-1.5 px-3 gap-1 font-semibold"
-                          >
-                            <span>{isCompleted ? 'Review Lab' : isRunning ? 'Resume Lab' : 'Start Lab'}</span>
-                            <Play size={12} />
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        </>
-      )}
-    </div>
-  );
+      <dl className="grid gap-4 sm:grid-cols-3">{[['Experiments attempted', stats.experimentsAttempted], ['Average score', `${stats.averageScore}%`], ['Best score', `${stats.bestScore}%`]].map(([label, value]) => <div key={label} className="panel p-5"><dt className="text-sm text-muted">{label}</dt><dd className="mt-2 text-2xl font-bold">{value}</dd></div>)}</dl>
+      <p className="text-sm text-muted">Attempted counts distinct experiments. Average score uses the best completed score for each experiment; failed, expired and running attempts do not contribute. Zero scores are displayed as recorded by the server.</p>
+    </section>}
+    <section aria-labelledby="experiment-progress-heading" className="space-y-4">
+      <h2 id="experiment-progress-heading" className="text-xl font-bold">Experiment-wise progress</h2>
+      <p className="text-sm text-muted">Based on your full attempt history and the published catalogue. This view shows experiment completion rather than partial task completion.</p>
+      {catalogue.isPending || history.isPending ? <LoadingState message="Loading experiment progress..." /> : catalogue.isError || history.isError ? <ErrorState message="Unable to load experiment progress. Completion states are unavailable until both catalogue and history load." onRetry={() => { if (catalogue.isError) void catalogue.refetch(); if (history.isError) void history.refetch(); }} retrying={catalogue.isFetching || history.isFetching} />
+        : !experiments.length ? <div className="state-panel"><h3 className="font-bold">No published experiments available</h3><Link to="/history" className="button-secondary mt-4">View recorded attempts</Link></div>
+        : <div className="grid gap-4 md:grid-cols-2">{experiments.map(experiment => {
+          const attempts = (history.data?.attempts ?? []).filter(attempt => attempt.experimentId === experiment._id).sort((a, b) => Date.parse(b.startedAt) - Date.parse(a.startedAt));
+          const completed = attempts.filter(attempt => attempt.status === 'completed');
+          const scores = completed.flatMap(attempt => attempt.score === null ? [] : [attempt.score]);
+          const status = completed.length ? 'completed' : attempts.some(attempt => attempt.status === 'running') ? 'running' : attempts[0]?.status ?? 'not-started';
+          return <article key={experiment._id} className="panel p-5 space-y-3"><h3 className="text-lg font-bold">{experiment.title}</h3><AttemptStatus status={status} /><p className="text-sm text-muted">{experiment.description}</p>
+            <dl className="grid gap-3 sm:grid-cols-2 text-sm"><div><dt className="text-muted">Attempts recorded</dt><dd>{attempts.length}</dd></div><div><dt className="text-muted">Best completed score</dt><dd>{scores.length ? `${Math.max(...scores)}/100` : 'Not graded'}</dd></div><div className="sm:col-span-2"><dt className="text-muted">Last started</dt><dd>{attempts[0] ? attemptDate(attempts[0].startedAt) : 'Not started'}</dd></div></dl>
+            <Link className="button-secondary text-sm" to={`/experiments/${experiment._id}`} aria-label={`View experiment: ${experiment.title}`}>View experiment</Link>
+          </article>;
+        })}</div>}
+    </section>
+  </div>;
 }

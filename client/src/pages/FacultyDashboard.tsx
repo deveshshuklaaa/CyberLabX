@@ -7,6 +7,7 @@ import { LoadingState, ErrorState } from '../components/common/QueryState';
 import { MetricCard } from '../components/common/MetricCard';
 import { PendingIntegration } from '../components/common/PendingIntegration';
 import { TeacherEnrollment } from '../components/faculty/TeacherEnrollment';
+import { Link } from 'react-router-dom';
 import { CohortPerformance } from '../components/faculty/CohortPerformance';
 
 interface FacultyMetrics { students: number; completedAttempts: number; averageScore: number; reports: number; }
@@ -51,7 +52,7 @@ export function FacultyDashboard() {
     <div className="grid gap-5">
       <section id="student-monitoring" aria-labelledby="student-monitoring-heading" className="panel p-5 sm:p-6 space-y-4 scroll-mt-6">
         <h2 id="student-monitoring-heading" className="text-xl font-bold">Student monitoring</h2>
-        {isAdmin ? <><p className="text-sm text-muted">Student monitoring requires an explicitly selected teacher; admin access does not impersonate a faculty session.</p><PendingIntegration title="Teacher selection required" description="Admin teacher-scoped APIs exist. Select a teacher through a future admin management flow; faculty-only enrollment controls are not available to administrators." /></> : <TeacherEnrollment />}
+        {isAdmin ? <><p className="text-sm text-muted">Student monitoring requires an explicitly selected teacher; admin access does not impersonate a faculty session.</p><Link to="/admin" className="button-secondary">Manage teacher cohorts in Admin</Link></> : <TeacherEnrollment />}
       </section>
       <section id="experiment-performance" aria-labelledby="experiment-performance-heading" className="panel p-5 sm:p-6 space-y-4 scroll-mt-6">
         <h2 id="experiment-performance-heading" className="text-xl font-bold">Experiment performance</h2>

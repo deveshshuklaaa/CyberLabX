@@ -1,3 +1,4 @@
+import { MemoryRouter } from 'react-router-dom';
 import { useSessionStore } from '../store/sessionStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within } from '@testing-library/react';
@@ -12,7 +13,7 @@ const emptyAnalytics = { cohort: { enrolledStudents: 0, activeStudents: 0, inact
 function responses(value = metrics) { vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : path === '/teacher/analytics/experiments' ? emptyAnalytics : { metrics: value } })); }
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={client}><FacultyDashboard /></QueryClientProvider>);
+  return render(<QueryClientProvider client={client}><MemoryRouter><FacultyDashboard /></MemoryRouter></QueryClientProvider>);
 }
 beforeEach(() => { vi.clearAllMocks(); useSessionStore.setState({ user: { id: 'teacher', firstName: 'Test', lastName: 'Teacher', email: 'teacher@example.test', role: 'faculty', isActive: true } }); });
 describe('Teacher overview', () => {

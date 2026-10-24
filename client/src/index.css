@@ -16,7 +16,7 @@
 @layer components {
   .panel { @apply rounded-xl border border-line bg-surface shadow-sm; }
   .button { @apply inline-flex items-center justify-center min-h-11 rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark active:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60; }
-  .button-secondary { @apply inline-flex items-center justify-center min-h-11 rounded-lg border border-line bg-surface px-4 py-2 font-semibold text-ink transition hover:border-brand hover:bg-[#FDF4F4] hover:text-brand-dark; }
+  .button-secondary { @apply inline-flex items-center justify-center min-h-11 rounded-lg border border-line bg-surface px-4 py-2 font-semibold text-ink transition hover:border-brand hover:bg-[#FDF4F4] hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-60; }
   .field { @apply w-full min-w-0 min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15; }
   .page-heading { @apply border-b border-line pb-5; }
   .page-title { @apply text-2xl sm:text-3xl font-bold tracking-tight text-ink; }
@@ -45,3 +45,6 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
+
+.field:focus-visible { outline: 3px solid #094F9F; outline-offset: 2px; }
+.button-secondary[aria-disabled="true"] { opacity: .6; cursor: wait; }

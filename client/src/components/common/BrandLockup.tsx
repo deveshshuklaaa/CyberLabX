@@ -22,13 +22,13 @@ export const BrandLockup: React.FC<BrandLockupProps> = ({
   const isDark = variant === 'dark';
 
   const content = (
-    <div className="flex items-center gap-3 group">
+    <div className="flex min-w-0 items-center gap-3 group">
       <img
         src="/assets/somaiya-emblem.png"
         alt="Somaiya Vidyavihar University"
         className={`${logoHeight} w-auto object-contain shrink-0`}
       />
-      <div className="flex flex-col justify-center leading-tight">
+      <div className="flex min-w-0 flex-col justify-center leading-tight">
         <span
           className={`font-black tracking-wider uppercase font-sans ${
             isDark ? 'text-white' : 'text-[#A8002C]'
@@ -49,7 +49,7 @@ export const BrandLockup: React.FC<BrandLockupProps> = ({
 
   if (clickable) {
     return (
-      <Link to="/" className="inline-flex items-center focus:outline-none focus:ring-2 focus:ring-brand/40 rounded-sm">
+      <Link to="/" className="inline-flex min-w-0 items-center focus:outline-none focus:ring-2 focus:ring-brand/40 rounded-sm">
         {content}
       </Link>
     );

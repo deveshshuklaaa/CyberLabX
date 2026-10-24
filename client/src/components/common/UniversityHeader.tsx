@@ -1,229 +1,54 @@
-import React, { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { ExternalLink, HelpCircle, LogOut, Menu, User as UserIcon, X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { ExternalLink, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { BrandLockup } from './BrandLockup';
+import { PortalNavigation } from './PortalNavigation';
 import { api } from '../../services/api';
 import { useSessionStore } from '../../store/sessionStore';
 
-export const UniversityHeader: React.FC = () => {
+export function UniversityHeader() {
+  const queryClient = useQueryClient();
   const { user, setUser } = useSessionStore();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
+  const [openPath, setOpenPath] = useState<string | null>(null);
+  const toggle = useRef<HTMLButtonElement>(null);
+  const open = openPath === location.pathname;
+  const close = () => setOpenPath(null);
   const logout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      // ignore
-    } finally {
-      setUser(null);
-      navigate('/login');
-    }
+    try { await api.post('/auth/logout'); } catch { /* Preserve existing logout behavior. */ }
+    finally { close(); queryClient.clear(); setUser(null); navigate('/login'); }
   };
-
-  const isActive = (path: string) =>
-    path === '/'
-      ? location.pathname === '/'
-      : location.pathname.startsWith(path);
-
-  const navLinkClass = (path: string) =>
-    `hover:text-brand transition-colors py-1 border-b-2 ${
-      isActive(path) ? 'text-brand border-brand' : 'border-transparent hover:border-brand'
-    }`;
-
-  return (
-    <header className="w-full bg-white border-b border-line shadow-xs">
-      {/* ── Level 1: Top Institutional Bar ── */}
-      <div className="bg-brand-dark text-white/90 text-xs py-1.5 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <a
-              href="https://www.somaiya.edu/en/"
-              target="_blank"
-              rel="noreferrer"
-              className="font-medium hover:text-white flex items-center gap-1 transition-colors"
-            >
-              <span>Somaiya Vidyavihar University</span>
-              <ExternalLink size={12} className="opacity-70" />
-            </a>
-            <span className="hidden md:inline text-white/40">|</span>
-            <span className="hidden md:inline text-white/80">Academic Year 2025–2026</span>
-          </div>
-
-          <div className="flex items-center gap-4 text-xs">
-            <a
-              href="https://kjsieit.somaiya.edu/en/"
-              target="_blank"
-              rel="noreferrer"
-              className="hidden sm:inline hover:text-white transition-colors"
-            >
-              KJSIEIT Campus
-            </a>
-            <span className="hidden sm:inline text-white/40">|</span>
-            <Link
-              to="/profile"
-              className="hover:text-white flex items-center gap-1 transition-colors"
-            >
-              <HelpCircle size={12} />
-              <span>Student Support &amp; Help</span>
-            </Link>
-          </div>
-        </div>
+  return <header className="border-b border-line bg-surface shadow-sm">
+    <div className="bg-brand-dark text-white px-4 sm:px-6 py-2 text-xs">
+      <div className="mx-auto max-w-7xl flex flex-wrap justify-between gap-2">
+        <a href="https://www.somaiya.edu/en/" target="_blank" rel="noreferrer" className="!text-white inline-flex items-center gap-2">
+          Somaiya Vidyavihar University <ExternalLink size={12} aria-hidden="true" />
+        </a>
+        <span className="inline-flex items-center gap-2"><ShieldCheck size={14} aria-hidden="true" />Cybersecurity learning lab</span>
       </div>
-
-      {/* ── Level 2: Main University Header ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
-        {/* Brand Lockup */}
-        <BrandLockup size="md" />
-
-        {/* Desktop Navigation */}
-        <nav className="hidden lg:flex items-center gap-6 text-sm font-medium text-ink">
-          <Link to="/" className={navLinkClass('/')}>Dashboard</Link>
-          <Link to="/experiments" className={navLinkClass('/experiments')}>Experiments</Link>
-          <Link to="/progress" className={navLinkClass('/progress')}>My Progress</Link>
-          <Link to="/history" className={navLinkClass('/history')}>History</Link>
-          <Link to="/profile" className={navLinkClass('/profile')}>Profile</Link>
-
-          {/* Role-Specific Links */}
-          {(user?.role === 'faculty' || user?.role === 'admin') && (
-            <Link to="/faculty" className={navLinkClass('/faculty')}>
-              Faculty Portal
-            </Link>
-          )}
-          {user?.role === 'admin' && (
-            <Link to="/admin" className={navLinkClass('/admin')}>
-              System Admin
-            </Link>
-          )}
-        </nav>
-
-        {/* User Session & Logout */}
-        <div className="hidden sm:flex items-center gap-4">
-          <div className="flex items-center gap-2.5 bg-canvas border border-line py-1.5 px-3 rounded-md text-xs">
-            <span className="p-1 rounded bg-brand/10 text-brand">
-              <UserIcon size={14} />
-            </span>
-            <div className="flex flex-col text-left leading-tight">
-              <span className="font-semibold text-ink">{user?.firstName} {user?.lastName}</span>
-              <span className="text-[10px] text-muted uppercase tracking-wider">{user?.role} Account</span>
-            </div>
-          </div>
-
-          <button
-            onClick={logout}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-brand transition-colors py-2 px-3 border border-line rounded-md hover:bg-canvas"
-            title="Sign out of virtual laboratory portal"
-          >
-            <LogOut size={15} />
-            <span>Sign Out</span>
-          </button>
+    </div>
+    <div className="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+      <BrandLockup size="sm" />
+      <div className="hidden md:flex items-center gap-4 min-w-0">
+        <div className="text-right min-w-0 text-sm">
+          <p className="font-semibold break-words">{user?.firstName} {user?.lastName}</p>
+          <p className="text-xs text-muted">{user?.role === 'faculty' ? 'Teacher' : user?.role} account</p>
         </div>
-
-        {/* Mobile Hamburger Button */}
-        <div className="lg:hidden flex items-center gap-2">
-          <button
-            onClick={() => setMobileMenuOpen(prev => !prev)}
-            className="p-2 rounded-md border border-line text-ink hover:text-brand hover:bg-canvas transition"
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
+        <button type="button" className="button-secondary gap-2 text-sm" onClick={logout}><LogOut size={16} aria-hidden="true" />Sign Out</button>
       </div>
-
-      {/* ── Mobile Navigation Drawer ── */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden border-t border-line bg-surface px-5 py-4 shadow-lg animate-in fade-in duration-150">
-          <div className="flex items-center justify-between pb-3 border-b border-line mb-3">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded bg-brand/10 text-brand">
-                <UserIcon size={16} />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-ink">{user?.firstName} {user?.lastName}</p>
-                <p className="text-xs text-muted capitalize">{user?.role} · Somaiya Vidyavihar University</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2.5 text-sm font-medium">
-            <Link
-              to="/"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-left py-2 px-3 rounded-md hover:bg-canvas hover:text-brand transition"
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/experiments"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-left py-2 px-3 rounded-md hover:bg-canvas hover:text-brand transition"
-            >
-              Experiments
-            </Link>
-            <Link
-              to="/progress"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-left py-2 px-3 rounded-md hover:bg-canvas hover:text-brand transition"
-            >
-              My Progress
-            </Link>
-            <Link
-              to="/history"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-left py-2 px-3 rounded-md hover:bg-canvas hover:text-brand transition"
-            >
-              Practical History
-            </Link>
-            <Link
-              to="/profile"
-              onClick={() => setMobileMenuOpen(false)}
-              className="text-left py-2 px-3 rounded-md hover:bg-canvas hover:text-brand transition"
-            >
-              My Profile
-            </Link>
-
-            {(user?.role === 'faculty' || user?.role === 'admin') && (
-              <Link
-                to="/faculty"
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-3 rounded-md text-brand hover:bg-brand/5 transition"
-              >
-                Faculty Portal
-              </Link>
-            )}
-            {user?.role === 'admin' && (
-              <Link
-                to="/admin"
-                onClick={() => setMobileMenuOpen(false)}
-                className="py-2 px-3 rounded-md text-brand hover:bg-brand/5 transition"
-              >
-                System Administration
-              </Link>
-            )}
-
-            <div className="border-t border-line pt-3 mt-1 flex flex-col gap-2">
-              <a
-                href="https://www.somaiya.edu/en/"
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs text-muted flex items-center justify-between py-1.5 px-3 rounded hover:bg-canvas"
-              >
-                <span>Somaiya Vidyavihar University Website</span>
-                <ExternalLink size={14} />
-              </a>
-              <button
-                onClick={logout}
-                className="w-full flex items-center justify-center gap-2 text-sm font-semibold text-danger bg-danger/5 py-2.5 rounded-md hover:bg-danger/10 transition mt-2"
-              >
-                <LogOut size={16} />
-                <span>Sign Out</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </header>
-  );
-};
+      <button ref={toggle} type="button" className="button-secondary md:hidden shrink-0 !p-3" aria-label="Toggle navigation menu"
+        aria-expanded={open} aria-controls="mobile-portal-navigation" onClick={() => setOpenPath(open ? null : location.pathname)}>
+        {open ? <X size={20} aria-hidden="true" /> : <Menu size={20} aria-hidden="true" />}
+      </button>
+    </div>
+    <nav aria-label="Main navigation" className="hidden md:flex mx-auto max-w-7xl px-6 pb-3 flex-wrap gap-2"><PortalNavigation /></nav>
+    <div id="mobile-portal-navigation" hidden={!open} className="md:hidden border-t border-line px-4 py-4"
+      onKeyDown={event => { if (event.key === 'Escape') { close(); toggle.current?.focus(); } }}>
+      <p className="text-sm font-semibold break-words mb-3">{user?.firstName} {user?.lastName}</p>
+      <nav aria-label="Mobile navigation" className="flex flex-col gap-1"><PortalNavigation onNavigate={close} /></nav>
+      <button type="button" className="button-secondary gap-2 mt-4 w-full" onClick={logout}><LogOut size={16} aria-hidden="true" />Sign Out</button>
+    </div>
+  </header>;
+}

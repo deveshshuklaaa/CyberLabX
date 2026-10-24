@@ -53,16 +53,11 @@ export function Login() {
     }
   };
 
-  const fillQuickCreds = (e: string, p: string) => {
-    setEmail(e);
-    setPassword(p);
-  };
-
   return (
     <div className="min-h-screen bg-canvas flex flex-col justify-between">
       {/* Top Institutional Header Bar */}
       <div className="bg-brand-dark text-white/90 text-xs py-2 px-4 sm:px-6 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+        <div className="max-w-7xl mx-auto flex flex-wrap gap-2 items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="font-semibold tracking-wide">Somaiya Vidyavihar University</span>
             <span className="text-white/40">|</span>
@@ -128,7 +123,7 @@ export function Login() {
               {/* Login Form */}
               <form onSubmit={submit} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
+                  <label htmlFor="login-email" className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
                     University Email ID
                   </label>
                   <div className="relative">
@@ -137,6 +132,7 @@ export function Login() {
                     </span>
                     <input
                       required
+                      id="login-email"
                       type="email"
                       className="field pl-9 text-sm"
                       placeholder="student@somaiya.edu"
@@ -148,7 +144,7 @@ export function Login() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
+                  <label htmlFor="login-password" className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
                     Account Password
                   </label>
                   <div className="relative">
@@ -157,6 +153,7 @@ export function Login() {
                     </span>
                     <input
                       required
+                      id="login-password"
                       type="password"
                       className="field pl-9 text-sm"
                       placeholder="••••••••••••"
@@ -177,28 +174,6 @@ export function Login() {
                 </button>
               </form>
 
-              {/* Quick Fill Credentials for Local Dev (stripped in production) */}
-              {import.meta.env.DEV && (
-                <div className="mt-6 pt-5 border-t border-line text-xs">
-                  <p className="text-muted font-medium mb-2 text-center">Development Seed Accounts:</p>
-                  <div className="grid grid-cols-2 gap-2 text-[11px]">
-                    <button
-                      type="button"
-                      onClick={() => fillQuickCreds('student@cyberlabx.local', 'CyberLabXLocalStudent2026!')}
-                      className="p-1.5 rounded border border-line bg-canvas hover:border-brand text-muted hover:text-brand transition text-center"
-                    >
-                      Student Account
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => fillQuickCreds('faculty@cyberlabx.local', 'CyberLabXLocalFaculty2026!')}
-                      className="p-1.5 rounded border border-line bg-canvas hover:border-brand text-muted hover:text-brand transition text-center"
-                    >
-                      Faculty Account
-                    </button>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

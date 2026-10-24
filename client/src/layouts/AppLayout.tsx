@@ -5,9 +5,10 @@ import { UniversityFooter } from '../components/common/UniversityFooter';
 export function AppLayout() {
   return (
     <div className="min-h-screen bg-canvas flex flex-col justify-between">
-      <div>
+      <div className="flex-1">
+        <a href="#main-content" className="skip-link">Skip to main content</a>
         <UniversityHeader />
-        <main className="py-8 mx-auto max-w-7xl px-4 sm:px-6">
+        <main id="main-content" tabIndex={-1} className="portal-content py-6 sm:py-10 mx-auto max-w-7xl px-4 sm:px-6">
           <Outlet />
         </main>
       </div>

@@ -73,7 +73,7 @@ export const submitQuiz = asyncHandler(async (req, res) => {
         console.error('Report generation failed for attempt', attempt._id, err);
     }
 
-    /* ── Steps 6-8: Cleanup Docker resources ───────────────────── */
+    /* ── Steps 6-8: Cleanup the session's execution provider ───── */
     const session = await LabSession.findOne({
         attemptId: attempt._id,
         studentId: req.user!._id,
@@ -82,12 +82,14 @@ export const submitQuiz = asyncHandler(async (req, res) => {
     if (session && !['stopped', 'expired'].includes(session.status)) {
         try {
             await cleanupLab(session);
+            session.status = 'stopped';
+            session.endedAt = new Date();
         } catch (cleanupErr) {
-            // Cleanup is best-effort; removeQuietly inside already swallows errors
+            // Retain a retryable state for the VM reaper; never claim cleanup succeeded.
+            session.status = 'stopping';
+            session.failureReason = 'Completion saved; lab cleanup will be retried.';
             console.error('Lab cleanup warning for session', session._id, cleanupErr);
         }
-        session.status = 'stopped';
-        session.endedAt = new Date();
         await session.save();
     }
 

@@ -1,17 +1,42 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
 import { api, errorMessage } from '../services/api';
 import { useSessionStore } from '../store/sessionStore';
-import { BrandLockup } from '../components/common/BrandLockup';
+import { roleHome } from '../routes/roleHome';
+
+const googleErrors: Record<string, string> = {
+  not_configured: 'Google sign-in is not configured yet. Use your account password.',
+  access_denied: 'Google sign-in was cancelled. You can try again.',
+  invalid_callback: 'This sign-in request expired or is invalid. Please start again.',
+  invalid_identity: 'Google did not provide a valid verified profile. Please try again.',
+  account_exists: 'An account already uses this email. Sign in with its password, then return to this page to link Google.',
+  account_disabled: 'Your account is disabled. Contact an administrator.',
+  account_conflict: 'Google could not be linked to this account. Contact an administrator.',
+  provider_unavailable: 'Google sign-in is temporarily unavailable. Please try again.',
+};
 
 export function Login() {
+  const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(() => {
+    const code = searchParams.get('oauth_error') ?? '';
+    return Object.hasOwn(googleErrors, code) ? googleErrors[code] : '';
+  });
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
   const setUser = useSessionStore(s => s.setUser);
+  const currentUser = useSessionStore(s => s.user);
+  const googleLoginUrl = `${(api.defaults.baseURL ?? '/api').replace(/\/$/, '')}/auth/google`;
+
+  const linkGoogle = async () => {
+    setBusy(true); setError('');
+    try {
+      const { data } = await api.post('/auth/google/link');
+      window.location.assign(data.url);
+    } catch (err) { setError(errorMessage(err)); setBusy(false); }
+  };
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -20,7 +45,7 @@ export function Login() {
     try {
       const { data } = await api.post('/auth/login', { email, password });
       setUser(data.user);
-      navigate(data.user.role === 'faculty' ? '/faculty' : data.user.role === 'admin' ? '/admin' : '/');
+      navigate(roleHome(data.user.role));
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -85,6 +110,18 @@ export function Login() {
                     <p className="font-semibold">Authentication failed</p>
                     <p className="text-xs text-danger/90 mt-0.5">{error}</p>
                   </div>
+                </div>
+              )}
+
+              <a href={googleLoginUrl} className="button-secondary w-full justify-center mb-5 py-2.5 text-sm">
+                Continue with Google
+              </a>
+              {currentUser && (
+                <div className="mb-5 rounded-lg border border-line p-3 text-sm">
+                  <p className="mb-2">Signed in as {currentUser.email}.</p>
+                  <button type="button" className="button-secondary w-full" disabled={busy} onClick={linkGoogle}>
+                    Link Google to this account
+                  </button>
                 </div>
               )}
 

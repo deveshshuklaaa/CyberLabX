@@ -15,7 +15,11 @@ const rootEnvPath = path.resolve(currentDir, '../../../.env');
 
 dotenv.config({ path: rootEnvPath });
 
-const schema = z.object({
+export const environmentSchema = z.object({
+  GOOGLE_CLIENT_ID: z.preprocess(value => value === '' ? undefined : value, z.string().min(1).optional()),
+  GOOGLE_CLIENT_SECRET: z.preprocess(value => value === '' ? undefined : value, z.string().min(1).optional()),
+  GOOGLE_CALLBACK_URL: z.preprocess(value => value === '' ? undefined : value, z.string().url().optional()),
+  LAB_BACKEND: z.enum(['docker', 'qemu']).default('docker'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
@@ -98,8 +102,24 @@ const schema = z.object({
     .int()
     .min(100000000)
     .default(500000000),
+}).superRefine((value, context) => {
+  const google = [value.GOOGLE_CLIENT_ID, value.GOOGLE_CLIENT_SECRET, value.GOOGLE_CALLBACK_URL];
+  if (google.some(Boolean) && !google.every(Boolean)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['GOOGLE_CLIENT_ID'], message: 'Configure all three Google OAuth environment variables or leave all three empty.' });
+  }
+  if (value.GOOGLE_CALLBACK_URL) {
+    let callback: URL;
+    try { callback = new URL(value.GOOGLE_CALLBACK_URL); } catch { return; }
+    const localHttp = callback.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(callback.hostname);
+    if ((callback.protocol !== 'https:' && !localHttp) || (value.NODE_ENV === 'production' && callback.protocol !== 'https:') || callback.username || callback.password || callback.search || callback.hash || callback.pathname !== '/api/auth/google/callback') {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['GOOGLE_CALLBACK_URL'], message: 'Use the backend /api/auth/google/callback URL with HTTPS (HTTP localhost is allowed in development).' });
+    }
+    if (value.NODE_ENV === 'production' && !value.CLIENT_URL.startsWith('https://')) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['CLIENT_URL'], message: 'Google sign-in requires an HTTPS frontend in production.' });
+    }
+  }
 });
 
-export const env = schema.parse(process.env);
+export const env = environmentSchema.parse(process.env);
 
 export const isProduction = env.NODE_ENV === 'production';

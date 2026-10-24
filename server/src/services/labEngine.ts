@@ -178,11 +178,30 @@ export async function assertDockerReady() {
   await docker.ping();
 }
 
+/** Opt in only the approved Nmap lab; every other experiment retains Docker. */
+export function labBackend(lab: LabDefinition): 'docker' | 'qemu' {
+  return env.LAB_BACKEND === 'qemu' && lab.profile === 'shell-target-v1' &&
+    lab.studentImageKey === 'kali-nmap' && lab.target.imageKey === 'nmap-http-target' &&
+    lab.target.hostname === 'nmap-target' ? 'qemu' : 'docker';
+}
+
+export async function assertLabReady(lab: LabDefinition) {
+  if (labBackend(lab) === 'qemu') return (await import('./vm/manager.js')).assertVmReady();
+  await assertDockerReady();
+}
+
 /* ------------------------------------------------------------------ */
 /*  Provision a new lab environment                                   */
 /* ------------------------------------------------------------------ */
-export async function provisionLab(input: { attemptId: string; studentId: string; lab: LabDefinition }) {
+export async function provisionLab(input: { attemptId: string; studentId: string; lab: LabDefinition; expiresAt?: Date }) {
   const resolved = resolveLabDefinition(input.lab);
+  if (labBackend(input.lab) === 'qemu') {
+    const vm = await (await import('./vm/manager.js')).createVm({
+      attemptId: input.attemptId, studentId: input.studentId, profile: resolved.profile,
+      expiresAt: input.expiresAt ?? new Date(Date.now() + env.LAB_TTL_MINUTES * 60_000),
+    });
+    return { backend: 'qemu' as const, vmAttemptId: vm.attemptId, targetIp: '172.28.0.10' };
+  }
   const tag = safeName(input.attemptId);
   const networkName = `${env.LAB_NETWORK_PREFIX}-${tag}`;
   const studentName = `cyberlabx-student-${tag}`;
@@ -292,11 +311,13 @@ export async function provisionLab(input: { attemptId: string; studentId: string
 /*  Cleanup lab Docker resources — idempotent                         */
 /* ------------------------------------------------------------------ */
 export async function cleanupLab(session: {
+  vmAttemptId?: string;
   studentContainerId?: string;
   targetContainerId?: string;
   networkName?: string;
   resources?: { containerId: string }[];
 }) {
+  if (session.vmAttemptId) await (await import('./vm/manager.js')).destroyVm(session.vmAttemptId);
   for (const resource of session.resources ?? []) {
     await removeQuietly(() => docker.getContainer(resource.containerId).remove({ force: true }));
   }
@@ -314,7 +335,8 @@ export async function cleanupLab(session: {
 /* ------------------------------------------------------------------ */
 /*  Inspect whether a lab is still running                            */
 /* ------------------------------------------------------------------ */
-export async function inspectLab(session: { studentContainerId?: string }) {
+export async function inspectLab(session: { studentContainerId?: string; vmAttemptId?: string }) {
+  if (session.vmAttemptId) return (await import('./vm/manager.js')).getVmStatus(session.vmAttemptId);
   if (!session.studentContainerId) return false;
   try {
     return (await docker.getContainer(session.studentContainerId).inspect()).State.Running;
@@ -407,16 +429,21 @@ export async function expireLabs() {
     expiresAt: { $lte: new Date() },
   });
   for (const session of sessions) {
-    await cleanupLab(session);
-    session.status = 'expired';
-    session.endedAt = new Date();
-    await session.save();
+    try {
+      if (session.vmAttemptId) { session.status = 'stopping'; await session.save(); }
+      await cleanupLab(session);
+      session.status = 'expired';
+      session.endedAt = new Date();
+      await session.save();
 
-    // Mark corresponding attempts
-    await Attempt.updateMany(
-      { _id: session.attemptId, status: 'running' },
-      { $set: { status: 'expired', completedAt: new Date() } },
-    );
+      // Mark corresponding attempts
+      await Attempt.updateMany(
+        { _id: session.attemptId, status: 'running' },
+        { $set: { status: 'expired', completedAt: new Date() } },
+      );
+    } catch (error) {
+      console.error('Lab expiry cleanup failed; recovery retained.', String(session._id), error);
+    }
   }
   return sessions.length;
 }
@@ -426,10 +453,11 @@ export async function expireLabs() {
 /* ------------------------------------------------------------------ */
 export async function recoverOrphanedLabs() {
   let recovered = 0;
+  if (env.LAB_BACKEND === 'qemu') await (await import('./vm/manager.js')).recoverOrphanedVms();
 
   /* ── 1. Recover stale DB sessions ─────────────────────────────── */
   const staleSessions = await LabSession.find({
-    status: { $in: ['provisioning', 'running'] },
+    status: { $in: ['provisioning', 'running', 'stopping'] },
   });
 
   for (const session of staleSessions) {

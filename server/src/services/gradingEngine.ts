@@ -30,10 +30,10 @@ type RuleHandler = (
 const ruleHandlers: Record<string, RuleHandler> = {
   /* ---------- command: verify the CLI invocation itself ---------- */
   command(rule, command) {
-    const tokens = command.trim().toLowerCase().split(/\s+/);
+    const tokens = command.trim().replace(/^sudo\s+/, '').toLowerCase().split(/\s+/);
     const tool = (rule.tool ?? 'nmap').toLowerCase();
 
-    if (!tokens[0]?.startsWith(tool)) {
+    if (tokens[0] !== tool) {
       return { type: 'command', passed: false, message: `Expected command to start with "${tool}".` };
     }
 

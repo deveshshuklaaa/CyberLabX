@@ -117,6 +117,23 @@ describe('submitQuiz — lab completion flow', () => {
         vi.clearAllMocks();
     });
 
+    it('retains a retryable VM cleanup state after completion when shutdown fails', async () => {
+        const attempt = makeAttempt();
+        (Attempt.findOne as Mock).mockResolvedValue(attempt);
+        (Experiment.findById as Mock).mockReturnValue({ select: vi.fn().mockResolvedValue(experimentFixture) });
+        (generateReport as Mock).mockResolvedValue({ _id: 'report-1' });
+        const session: any = { _id: 'session', vmAttemptId: 'vm', status: 'running', save: vi.fn() };
+        (LabSession.findOne as Mock).mockResolvedValue(session);
+        (cleanupLab as Mock).mockRejectedValue(new Error('VM still running'));
+        const { req, res, next } = mockReqRes({ attemptId, answers: [] });
+        await (submitQuiz as any)(req, res, next);
+        expect(attempt.status).toBe('completed');
+        expect(res.body.reportId).toBe('report-1');
+        expect(session.status).toBe('stopping');
+        expect(session.vmAttemptId).toBe('vm');
+        expect(session.endedAt).toBeUndefined();
+    });
+
     it('calculates score, generates report, cleans up lab, returns reportId', async () => {
         const attempt = makeAttempt();
         (Attempt.findOne as Mock).mockResolvedValue(attempt);

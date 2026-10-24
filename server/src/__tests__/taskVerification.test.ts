@@ -4,12 +4,14 @@ vi.mock('../models/Attempt.js', () => ({ Attempt: { findOne: vi.fn() } }));
 vi.mock('../models/LabSession.js', () => ({ LabSession: { findOne: vi.fn() } }));
 vi.mock('../models/Experiment.js', () => ({ Experiment: { findById: vi.fn() } }));
 vi.mock('../models/CommandLog.js', () => ({ CommandLog: { findOne: vi.fn() } }));
+vi.mock('../services/vm/verification.js', () => ({ hasNmapEvidence: vi.fn(), inspectVmTask: vi.fn() }));
 
 import { Attempt } from '../models/Attempt.js';
 import { LabSession } from '../models/LabSession.js';
 import { Experiment } from '../models/Experiment.js';
 import { CommandLog } from '../models/CommandLog.js';
 import { submitTask } from '../controllers/taskController.js';
+import { hasNmapEvidence, inspectVmTask } from '../services/vm/verification.js';
 
 const attemptId = '64b000000000000000000001';
 const sessionId = '64b000000000000000000002';
@@ -72,5 +74,32 @@ describe('task verification evidence', () => {
     expect(res.body.result.passed).toBe(true);
     expect(attempt.currentTaskIndex).toBe(1);
     expect(CommandLog.findOne).toHaveBeenCalledWith(expect.objectContaining({ attemptId, studentId, sessionId, command: 'nmap -sS nmap-target' }));
+  });
+
+  it('does not award VM credit for a failed or incomplete scan', async () => {
+    const attempt = activeAttempt();
+    vi.mocked(Attempt.findOne).mockResolvedValue(attempt as any);
+    vi.mocked(LabSession.findOne).mockResolvedValue({ _id: sessionId, vmAttemptId: attemptId, expiresAt: new Date(Date.now() + 60000) } as any);
+    vi.mocked(CommandLog.findOne).mockReturnValue({ sort: vi.fn().mockResolvedValue({ command: 'nmap -sS nmap-target', stdout: 'requires root privileges' }) } as any);
+    vi.mocked(hasNmapEvidence).mockReturnValue(false);
+    const { req, res, next } = request({ attemptId, command: 'nmap -sS nmap-target' });
+    await (submitTask as any)(req, res, next);
+    expect(res.statusCode).toBe(422);
+    expect(attempt.currentTaskIndex).toBe(0);
+    expect(inspectVmTask).not.toHaveBeenCalled();
+  });
+
+  it('verifies VM evidence and live target access before using existing grading', async () => {
+    const attempt = activeAttempt();
+    vi.mocked(Attempt.findOne).mockResolvedValue(attempt as any);
+    vi.mocked(LabSession.findOne).mockResolvedValue({ _id: sessionId, vmAttemptId: attemptId, expiresAt: new Date(Date.now() + 60000) } as any);
+    vi.mocked(CommandLog.findOne).mockReturnValue({ sort: vi.fn().mockResolvedValue({ command: 'sudo nmap -sS nmap-target', stdout: 'captured output' }) } as any);
+    vi.mocked(hasNmapEvidence).mockReturnValue(true);
+    vi.mocked(inspectVmTask).mockResolvedValue(true);
+    const { req, res, next } = request({ attemptId, command: 'sudo nmap -sS nmap-target' });
+    await (submitTask as any)(req, res, next);
+    expect(inspectVmTask).toHaveBeenCalledWith(sessionId, studentId);
+    expect(res.body.result.passed).toBe(true);
+    expect(attempt.currentTaskIndex).toBe(1);
   });
 });

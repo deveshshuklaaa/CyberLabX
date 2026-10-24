@@ -1,0 +1,2 @@
+infrastructure/vm/**/*.sh text eol=lf
+infrastructure/vm/**/*.py text eol=lf

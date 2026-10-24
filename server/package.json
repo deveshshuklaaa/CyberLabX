@@ -9,7 +9,9 @@
     "start": "node dist/server.js",
     "test": "vitest run",
     "lint": "eslint src --max-warnings=0",
-    "seed": "tsx src/services/dbSeeder.ts"
+    "seed": "tsx src/services/dbSeeder.ts",
+    "vm:check": "tsx src/scripts/validateKaliVm.ts",
+    "vm:smoke": "tsx src/scripts/validateKaliVm.ts --boot"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -19,11 +21,13 @@
     "dotenv": "^16.6.1",
     "express": "^5.1.0",
     "express-rate-limit": "^8.0.1",
+    "google-auth-library": "^11.3.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.16.1",
     "pdfkit": "^0.17.1",
     "socket.io": "^4.8.1",
+    "ssh2": "^1.17.0",
     "zod": "^3.25.67"
   },
   "devDependencies": {
@@ -35,12 +39,13 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.0.10",
     "@types/pdfkit": "^0.17.1",
+    "@types/ssh2": "^1.15.6",
     "@typescript-eslint/eslint-plugin": "^8.35.1",
     "@typescript-eslint/parser": "^8.35.1",
     "eslint": "^9.30.0",
+    "socket.io-client": "^4.8.4",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }
 }
-

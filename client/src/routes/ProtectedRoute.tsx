@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useSessionStore } from '../store/sessionStore';
 import type { Role } from '../types/api';
+import { roleHome } from './roleHome';
 
 export function ProtectedRoute({ roles }: { roles?: Role[] }) {
   const { user, loaded } = useSessionStore();
   if (!loaded) return <div className="grid min-h-screen place-items-center bg-canvas text-muted">Loading Somaiya Virtual Labs…</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
+  if (roles && !roles.includes(user.role)) return <Navigate to={roleHome(user.role)} replace />;
   return <Outlet />;
 }

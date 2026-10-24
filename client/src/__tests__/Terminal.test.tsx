@@ -36,5 +36,13 @@ describe('Terminal lab metadata', () => {
 
     expect(mocks.write).toHaveBeenCalledWith(expect.stringContaining('configured-target'));
     expect(mocks.write).not.toHaveBeenCalledWith(expect.stringContaining('nmap-target'));
+    expect(mocks.socketEmit).toHaveBeenCalledWith('terminal:resize', expect.objectContaining({ labSessionId: 'lab-1' }));
+  });
+
+  it('identifies the VM terminal and explains privileged Nmap scans after SSH is ready', () => {
+    render(<Terminal labSessionId="lab-vm" targetHostname="nmap-target" onOutput={() => {}} />);
+    mocks.handlers['terminal:ready']({ restored: false, backend: 'qemu' });
+    expect(mocks.write).toHaveBeenCalledWith(expect.stringContaining('real Kali VM'));
+    expect(mocks.write).toHaveBeenCalledWith(expect.stringContaining('sudo'));
   });
 });

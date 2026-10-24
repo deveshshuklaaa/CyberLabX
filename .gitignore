@@ -8,4 +8,8 @@ coverage/
 **/reports/*.pdf
 server/reports/*.pdf
 reports/*.pdf
+infrastructure/vm/downloads/
+infrastructure/vm/kali/
+infrastructure/vm/runtime/
+infrastructure/vm/validation-*.json
 

@@ -26,7 +26,7 @@ export interface Experiment {
 }
 
 export interface LabSession {
-    id: string; attemptId?: string; status: string; targetIp?: string;
+    id: string; backend?: 'docker' | 'qemu'; attemptId?: string; status: string; targetIp?: string;
     targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: { role: string; hostname: string; displayName: string }[]; expiresAt: string; failureReason?: string;
 }
 

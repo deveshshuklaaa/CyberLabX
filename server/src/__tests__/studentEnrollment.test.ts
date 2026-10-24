@@ -339,12 +339,13 @@ describe('student and admin enrollment access', () => {
     expect((await call(adminPath() + `/${ids.studentA}`, { as: 'admin', method: 'DELETE' })).status).toBe(204);
     expect(account('studentA').teacherId).toBeUndefined();
   });
-  it('clears student assignment when an admin promotes that account', async () => {
-    const response = await call(`/admin/users/${ids.studentA}`, { as: 'admin', method: 'PATCH', body: { role: 'faculty' } });
-    expect(response.status).toBe(200); expect(account('studentA').teacherId).toBeUndefined(); expect(account('studentA').enrolledAt).toBeUndefined();
+  it('preserves student assignment when promotion is blocked by the atomic management gate', async () => {
+    const response = await call(`/admin/users/${ids.studentA}`, { as: 'admin', method: 'PATCH', body: { role: 'faculty', expectedManagementVersion: 0 } });
+    expect(response.status).toBe(503); expect(account('studentA').teacherId).toEqual(ids.teacherA); expect(account('studentA').enrolledAt).toBeInstanceOf(Date);
   });
-  it('retains assignment when an admin disables an account, allowing explicit removal', async () => {
-    expect((await call(`/admin/users/${ids.studentA}`, { as: 'admin', method: 'PATCH', body: { isActive: false } })).status).toBe(200);
+  it('retains assignment when disabling is blocked, still allowing explicit removal', async () => {
+    expect((await call(`/admin/users/${ids.studentA}`, { as: 'admin', method: 'PATCH', body: { isActive: false, expectedManagementVersion: 0 } })).status).toBe(503);
+    expect(account('studentA').isActive).toBe(true);
     expect(account('studentA').teacherId).toEqual(ids.teacherA);
     expect((await call(studentPath('studentA'), { method: 'DELETE' })).status).toBe(204);
   });

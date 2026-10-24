@@ -11,7 +11,7 @@ export const facultyDashboard = asyncHandler(async (req, res) => {
   ]);
   res.json({ metrics: { students, completedAttempts: completed, averageScore: Math.round(scores[0]?.average ?? 0), reports } });
 });
-export const adminDashboard = asyncHandler(async (_req, res) => { const [users, activeStudents, attempts, events] = await Promise.all([User.countDocuments(), User.countDocuments({ role: 'student', isActive: true }), Attempt.countDocuments(), AuditEvent.find().sort({ createdAt: -1 }).limit(20).lean()]); res.json({ metrics: { users, activeStudents, attempts }, events }); });
+export const adminDashboard = asyncHandler(async (_req, res) => { const [users, activeStudents, attempts, events] = await Promise.all([User.countDocuments(), User.countDocuments({ role: 'student', isActive: true }), Attempt.countDocuments(), AuditEvent.find().select('_id action userId resourceType resourceId createdAt').sort({ createdAt: -1, _id: -1 }).limit(20).lean()]); res.json({ metrics: { users, activeStudents, attempts }, events }); });
 
 /** Read-only academic progress view. Scores and completion states remain owned by Attempt. */
 export const studentDashboard = asyncHandler(async (req, res) => {

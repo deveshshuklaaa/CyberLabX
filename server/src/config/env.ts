@@ -6,11 +6,7 @@ import { z } from 'zod';
 const currentFile = fileURLToPath(import.meta.url);
 const currentDir = path.dirname(currentFile);
 
-// env.ts is:
-// C:\dev\CyberLabX\server\src\config\env.ts
-//
-// ../../../.env resolves to:
-// C:\dev\CyberLabX\.env
+// Resolve the uncommitted repository-root .env from source or compiled config.
 const rootEnvPath = path.resolve(currentDir, '../../../.env');
 
 dotenv.config({ path: rootEnvPath });

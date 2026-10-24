@@ -244,9 +244,9 @@ student or deletes their account.
 
 The implementation adds 53 focused tests: 49 HTTP/session/ownership/integrity/
 progress tests with mocked MongoDB and four real Mongoose schema/serialization
-tests. Concurrent HTTP requests test the conditional update contract against a
-mocked store; live MongoDB concurrency/index creation is a separate manual check.
-The regression baseline was 207 backend tests and 43 frontend tests.
+tests. Concurrent HTTP requests in these suites exercise a mocked store;
+the separate real MongoDB validation below checks actual persistence and races.
+The pre-enrollment regression baseline was 207 backend tests and 43 frontend tests.
 
 Run from the repository root:
 
@@ -259,16 +259,37 @@ npm --prefix server run lint
 npm --prefix client run lint
 ```
 
-Validation on 2026-10-24: all 260 backend tests and 43 frontend tests passed,
+Initial implementation validation on 2026-10-24: 260 backend tests and 43 frontend tests passed,
 both builds passed, and frontend lint plus changed-backend-file lint passed.
 Full backend lint failed with only the three pre-existing findings: unused
 Nmap/DoS test imports and unused error-handler `_next`. The frontend build also
 retains its existing bundle-size advisory. No unrelated lint debt was changed.
 
-Before release, validate these endpoints against an isolated MongoDB database,
-confirm the cohort index exists, and submit simultaneous enrollment requests
-from two faculty sessions (one 201 and one 409; exactly one stored owner). Check
-the new UI against this contract using real student/faculty/admin sessions. No
-live Google OAuth, Docker or real Kali runtime validation is claimed here.
-No frontend, authentication architecture, lab engine, VM, or deployment changes
-are part of this branch.
+### Completed local real MongoDB validation
+
+On 24 October 2026, a separate isolated MongoDB 7.0.14 database and real backend
+processed **110 HTTP requests across 21 validation groups**, using real bcrypt
+password login and issued session cookies. Persistence and authentication were
+not mocked. The checks covered enrollment, duplicate/foreign ownership conflict,
+lists/detail/progress, unenrollment, re-enrollment, student/teacher authorization,
+admin operations, inactive accounts, role changes and both faculty dashboard aliases.
+
+Ten concurrent enrollment rounds each returned one 201 and one 409, with exactly
+one stored owner checked directly in MongoDB. Actual user indexes were verified:
+`_id_`, unique `email_1`, sparse unique `googleId_1`, `role_1`, and non-unique
+`teacherId_1_role_1__id_1`. Unenrollment removed only relationship fields; accounts,
+password hashes, sessions, attempts and reports were preserved. Academic records
+were synthetic fixtures; no lab execution or PDF generation was exercised.
+
+The run exposed a Node error-inspection failure when logging Zod validation
+errors. Commit `cd8d6af` preserves JSON 400 responses and includes two regression
+tests that failed before the fix. That baseline passed 262 backend / 43 frontend
+tests. Temporary databases/backend processes were cleaned up after validation.
+The later readiness commit `75c1b1f` adds 23 tests; the shared handoff now passes
+285 backend / 43 frontend tests. See [TEAM_HANDOFF.md](TEAM_HANDOFF.md).
+
+This establishes local database/API behavior, not production validation. Validate
+the new UI with real roles and the chosen deployment environment before release.
+No live Google OAuth, Docker lab or real Kali runtime success is claimed by this
+enrollment validation. Enrollment introduced no frontend or Lab Engine changes;
+the shared baseline also includes the separately documented readiness work.

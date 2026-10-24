@@ -12,4 +12,13 @@ infrastructure/vm/downloads/
 infrastructure/vm/kali/
 infrastructure/vm/runtime/
 infrastructure/vm/validation-*.json
+*.pem
+*.key
+id_rsa
+id_ed25519
+*.qcow2
+*.qcow
+*.vmdk
+*.vdi
+test-output*.txt
 

@@ -1,5 +1,12 @@
 # CyberLabX Google authentication — setup and review
 
+This is the original implementation review for `8103da1`. The current shared
+baseline is `origin/feature/student-enrollment`; see [TEAM_HANDOFF.md](TEAM_HANDOFF.md)
+for current test totals and [deployment-readiness.md](deployment-readiness.md)
+for subsequent configuration/readiness checks. Real Google browser OAuth remains
+unvalidated. Later real MongoDB/password-session validation does not establish
+Google provider success.
+
 Implemented on `codex/real-kali-nmap-integration`, 24 October 2026.
 Status: **automated verification passed; real Google OAuth not tested**.
 No Google client ID, client secret or callback URL is configured in the local

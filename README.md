@@ -1,5 +1,9 @@
 # CyberLabX V1
 
+For the current integration baseline, complete setup, enrollment API and
+validation status, start with [the team handoff](docs/TEAM_HANDOFF.md).
+The sections below describe the original Docker Nmap/DoS foundation.
+
 CyberLabX is an isolated, browser-based cybersecurity lab. V1 teaches Network Mapping with real Nmap commands running inside a disposable Kali container against a controlled private target.
 
 ## Prerequisites

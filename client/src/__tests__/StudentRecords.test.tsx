@@ -9,7 +9,7 @@ import { useSessionStore } from '../store/sessionStore';
 import { api } from '../services/api';
 import type { StudentHistoryAttempt } from '../types/api';
 
-vi.mock('../services/api', () => ({ api: { get: vi.fn(), post: vi.fn(), defaults: { baseURL: 'http://localhost:5000/api' } } }));
+vi.mock('../services/api', () => ({ api: { get: vi.fn(), post: vi.fn(), defaults: { baseURL: 'http://localhost:5000/api' } }, errorMessage: () => 'Request failed. Please try again.' }));
 const attempts: StudentHistoryAttempt[] = [
   { attemptId: 'a1', experimentId: 'e1', experimentTitle: 'Mapping', status: 'completed', score: 0, startedAt: '2026-01-01T10:00:00Z', completedAt: '2026-01-01T11:00:00Z', reportAvailable: true, reportId: 'r1' },
   { attemptId: 'a2', experimentId: 'e1', experimentTitle: 'Mapping', status: 'completed', score: 90, startedAt: '2026-02-01T10:00:00Z', completedAt: '2026-02-01T11:00:00Z', reportAvailable: false, reportId: 'stale-id' },
@@ -22,7 +22,7 @@ const experiments = [
   { _id: 'e3', title: 'New practical', slug: 'new', description: 'A published practical.', difficulty: 'Beginner', estimatedTimeMinutes: 30, taskCount: 2 },
 ];
 const dashboard = { stats: { totalExperiments: 3, experimentsAttempted: 3, experimentsCompleted: 1, averageScore: 90, bestScore: 90 }, recentAttempts: [] };
-function dataFor(path: string) { return path === '/student/history' ? { attempts } : path === '/student/dashboard' ? dashboard : { experiments }; }
+function dataFor(path: string) { return path === '/student/enrollment' ? { enrollment: null } : path === '/student/history' ? { attempts } : path === '/student/dashboard' ? dashboard : { experiments }; }
 function setup(path = '/progress') {
   const query = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   return render(<QueryClientProvider client={query}><MemoryRouter initialEntries={[path]}>
@@ -120,7 +120,7 @@ describe('Student profile', () => {
     expect(account.getByText('student')).toBeInTheDocument();
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View history' })).toHaveAttribute('href', '/history');
-    expect(api.get).not.toHaveBeenCalled();
+    expect(api.get).toHaveBeenCalledWith('/student/enrollment');
   });
   it.each([true, false])('clears the session through existing logout handling (request succeeds: %s)', async success => {
     if (success) vi.mocked(api.post).mockResolvedValue({ data: {} }); else vi.mocked(api.post).mockRejectedValue(new Error('offline'));

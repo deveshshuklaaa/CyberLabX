@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { useSessionStore } from '../store/sessionStore';
 import { PageHeading } from '../components/common/PageHeading';
 import { LoadingState } from '../components/common/QueryState';
+import { StudentEnrollment } from '../components/student/StudentEnrollment';
 
 export function StudentProfile() {
   const queryClient = useQueryClient();
@@ -30,6 +31,7 @@ export function StudentProfile() {
         <div><dt className="label text-muted">Account status</dt><dd><span className={`status-badge ${user.isActive ? 'status-success' : 'status-neutral'}`}>{user.isActive ? 'Active' : 'Inactive'}</span></dd></div><div><dt className="label text-muted">Account ID</dt><dd className="font-mono text-xs break-all select-all">{user.id}</dd></div>
       </dl>
     </section>
+    <StudentEnrollment />
     <nav aria-label="Learning account links" className="grid gap-3 sm:grid-cols-3"><Link className="button-secondary" to="/progress">View progress</Link><Link className="button-secondary" to="/history">View history</Link><Link className="button-secondary" to="/experiments">Browse experiments</Link></nav>
     <section className="panel p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4"><div><h2 className="font-bold">Session management</h2><p className="page-description">Sign out of your current CyberLabX session.</p></div><button type="button" className="button-secondary gap-2 shrink-0" onClick={signOut} disabled={signingOut}><LogOut size={16} aria-hidden="true" />{signingOut ? 'Signing out...' : 'Sign out'}</button></section>
     <p className="text-sm text-muted">Account details are read-only. Contact your institution for account corrections.</p>

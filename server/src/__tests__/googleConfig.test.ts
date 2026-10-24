@@ -20,4 +20,22 @@ describe('optional Google OAuth configuration', () => {
     expect(environmentSchema.safeParse(production).success).toBe(false);
     expect(environmentSchema.safeParse({ ...production, CLIENT_URL: 'https://portal.example.test' }).success).toBe(true);
   });
+
+  it('requires HTTPS in production even while Google login is disabled', () => {
+    expect(environmentSchema.safeParse({ ...base, NODE_ENV: 'production' }).success).toBe(false);
+    expect(environmentSchema.safeParse({ ...base, NODE_ENV: 'production', CLIENT_URL: 'https://portal.example.test' }).success).toBe(true);
+  });
+  it('canonicalizes the frontend origin for CORS and account-link origin comparisons', () => {
+    expect(environmentSchema.parse({ ...base, CLIENT_URL: 'https://PORTAL.example.test:443/' }).CLIENT_URL).toBe('https://portal.example.test');
+  });
+  it.each(['not-a-url', 'https://portal.example.test/subpath', 'https://portal.example.test?next=evil', 'https://portal.example.test/#fragment', 'https://user:password@portal.example.test', 'ftp://portal.example.test'])('rejects a frontend URL that is not a safe web origin: %s', CLIENT_URL => {
+    expect(environmentSchema.safeParse({ ...base, CLIENT_URL }).success).toBe(false);
+  });
+  it('defaults to direct access and permits only explicit local-proxy trust', () => {
+    expect(environmentSchema.parse(base).TRUST_PROXY).toBe('false');
+    expect(environmentSchema.parse({ ...base, TRUST_PROXY: 'loopback' }).TRUST_PROXY).toBe('loopback');
+  });
+  it.each(['true', '1', 'uniquelocal'])('rejects broad or ambiguous proxy trust: %s', TRUST_PROXY => {
+    expect(environmentSchema.safeParse({ ...base, TRUST_PROXY }).success).toBe(false);
+  });
 });

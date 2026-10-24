@@ -1,0 +1,13 @@
+# Preparation only: set PUBLIC_DOMAIN, STATIC_ROOT and SERVER_PORT in Caddy's environment.
+# Run Caddy natively on the same host as Node; keep the API port private.
+{$PUBLIC_DOMAIN} {
+    @backend path /api /api/* /socket.io /socket.io/* /health
+    handle @backend {
+        reverse_proxy 127.0.0.1:{$SERVER_PORT:5000}
+    }
+    handle {
+        root * "{$STATIC_ROOT}"
+        try_files {path} /index.html
+        file_server
+    }
+}

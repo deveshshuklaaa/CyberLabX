@@ -33,7 +33,18 @@ export const environmentSchema = z.object({
   CLIENT_URL: z
     .string()
     .url()
-    .default('http://localhost:5173'),
+    .default('http://localhost:5173')
+    .refine(value => {
+      try {
+        const url = new URL(value);
+        return ['http:', 'https:'].includes(url.protocol) && !url.username && !url.password &&
+          url.pathname === '/' && !url.search && !url.hash;
+      } catch { return false; }
+    }, 'CLIENT_URL must be an HTTP(S) origin without credentials, a path, query or fragment.')
+    .transform(value => new URL(value).origin),
+
+  // Opt in only for a reverse proxy on this host; never trust arbitrary forwarding headers.
+  TRUST_PROXY: z.enum(['false', 'loopback']).default('false'),
 
   MONGO_URI: z
     .string()
@@ -103,6 +114,9 @@ export const environmentSchema = z.object({
     .min(100000000)
     .default(500000000),
 }).superRefine((value, context) => {
+  if (value.NODE_ENV === 'production' && !value.CLIENT_URL.startsWith('https://')) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['CLIENT_URL'], message: 'Production requires an HTTPS frontend origin.' });
+  }
   const google = [value.GOOGLE_CLIENT_ID, value.GOOGLE_CLIENT_SECRET, value.GOOGLE_CALLBACK_URL];
   if (google.some(Boolean) && !google.every(Boolean)) {
     context.addIssue({ code: z.ZodIssueCode.custom, path: ['GOOGLE_CLIENT_ID'], message: 'Configure all three Google OAuth environment variables or leave all three empty.' });
@@ -113,9 +127,6 @@ export const environmentSchema = z.object({
     const localHttp = callback.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(callback.hostname);
     if ((callback.protocol !== 'https:' && !localHttp) || (value.NODE_ENV === 'production' && callback.protocol !== 'https:') || callback.username || callback.password || callback.search || callback.hash || callback.pathname !== '/api/auth/google/callback') {
       context.addIssue({ code: z.ZodIssueCode.custom, path: ['GOOGLE_CALLBACK_URL'], message: 'Use the backend /api/auth/google/callback URL with HTTPS (HTTP localhost is allowed in development).' });
-    }
-    if (value.NODE_ENV === 'production' && !value.CLIENT_URL.startsWith('https://')) {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['CLIENT_URL'], message: 'Google sign-in requires an HTTPS frontend in production.' });
     }
   }
 });

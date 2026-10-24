@@ -153,6 +153,22 @@ describe('Google authorization-code callback over HTTP (mocked Google)', () => {
       expect(header).toContain('HttpOnly'); expect(header).toContain('Secure'); expect(header).toContain('Expires=Thu, 01 Jan 1970');
     }
   });
+  it('rejects a replay when Google refuses an already-used code, without issuing another session', async () => {
+    const { cookie, transaction } = await start();
+    expect((await callback(cookie, { state: transaction.state, code: 'one-use-code' })).headers.get('location')).toBe(env.CLIENT_URL + '/student');
+    sdk.getToken.mockRejectedValue({ response: { data: { error: 'invalid_grant' } } });
+    const replay = await callback(cookie, { state: transaction.state, code: 'one-use-code' });
+    expect(replay.headers.get('location')).toContain('oauth_error=invalid_callback');
+    expect(setCookies(replay).some(value => value.startsWith('cyberlabx_session='))).toBe(false);
+    expect(setCookies(replay).some(value => value.startsWith('cyberlabx_google_oauth=;'))).toBe(true);
+  });
+  it('rejects linking if the active account changes before callback', async () => {
+    const { cookie, transaction } = await start(true);
+    vi.mocked(User.findById).mockReturnValue({ select: vi.fn().mockResolvedValue({ ...existing(), _id: '64b000000000000000000002' }) } as any);
+    const response = await callback(cookie + '; ' + session(), { state: transaction.state, code: 'code' });
+    expect(response.headers.get('location')).toContain('oauth_error=account_conflict');
+    expect(sdk.getToken).not.toHaveBeenCalled(); expect(User.findOneAndUpdate).not.toHaveBeenCalled();
+  });
 });
 
 describe('existing backend role authorization over HTTP', () => {

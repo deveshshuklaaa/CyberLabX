@@ -1,0 +1,6 @@
+# Merge explicitly with docker-compose.yml. Requires Docker Compose 2.24.4+.
+# Do not start this file by itself; keep the existing MongoDB volume and Docker labs.
+services:
+  mongodb:
+    ports: !override
+      - "127.0.0.1:${MONGO_PORT:-27017}:27017"

@@ -10,9 +10,9 @@ or `admin` role. The UI preserves `/teacher` and `/faculty` and existing guards.
 { metrics: { students: number; completedAttempts: number; averageScore: number; reports: number } }
 ```
 
-- `students`: active users whose role is `student`.
+- `students`: active enrolled students for faculty; active students platform-wide for admin.
 - `completedAttempts`: all completed attempts, including repeat experiments.
-- `averageScore`: rounded mean score of completed attempts, or zero when empty.
+- `averageScore`: rounded mean recorded score of completed attempts, or zero when empty; not a normalized percentage.
 - `reports`: count of report records.
 
 After local integration, faculty requests are scoped to currently enrolled students;
@@ -20,7 +20,7 @@ admin requests retain platform-wide aggregates. The student count includes activ
 enrolled accounts; attempts, scores and reports include enrolled inactive students
 and history before enrollment. There are
 no student rows, experiment breakdowns, report identifiers or enrollment actions
-in this response. The UI requests only the existing faculty dashboard endpoint.
+in this response. Enrollment data is requested separately through the routes below.
 Existing attempt, student-history and report routes are student-only; teacher
 screens must not reuse them to request another student's records.
 
@@ -32,8 +32,19 @@ email and removal are implemented. Admin equivalents require an explicit teacher
 ID; faculty endpoints do not accept admin impersonation. Student own-enrollment
 lookup is implemented at `GET /api/student/enrollment`.
 
-The frontend does not consume these endpoints yet. This is pending UI integration,
-not a missing enrollment backend. General admin user/teacher directories,
+Stage 4A connects the faculty-only student list (page/limit), enrollment by exactly
+one selector, student aggregate detail and confirmed removal on `/teacher` and
+`/faculty`. Student Profile consumes the own-enrollment endpoint, including
+unassigned, inactive and unavailable-teacher states. These are implemented UI
+features, not missing enrollment APIs. The list requests ten students per page;
+there is no fuzzy search. Successful mutations invalidate the list, student
+details, faculty metrics and any cached student enrollment. Removed detail data
+is evicted. A student in another browser context can use Refresh enrollment or
+return focus to refetch; no cross-browser push synchronization is assumed.
+
+Admins viewing Teacher Portal never call faculty-only enrollment routes. Explicit
+teacher selection and the admin teacher-scoped management UI remain deferred.
+General admin user/teacher directories,
 individual teacher attempt/report access, per-experiment analytics and experiment
 CRUD remain missing. Lists accept page/limit only; no fuzzy search or class model
 is provided. Enrollment progress averages completed attempts, not best-per-experiment
@@ -79,7 +90,9 @@ Use existing cookie authentication; teacher UI cannot grant itself access.
   lifecycle if supported, idempotency and authorized success/error responses.
 - Student role must be enforced server-side; never accept unrestricted role changes.
 - Document audit behavior and permissions for any future deactivation/removal.
-- No enrollment controls or mutation requests are implemented in Stage 5.
+- The original Stage 5 had no enrollment controls. Stage 4A now implements only
+  the existing single-teacher assignment contract; no invitation/class lifecycle
+  or student account creation is inferred.
 
 ### Experiment performance
 
@@ -168,7 +181,9 @@ The current client-side filters apply only to the fetched snapshot.
 
 Implemented API consumers are the student dashboard/history, published catalogue
 and detail, existing lab/task/quiz/report flows, faculty/admin aggregates and admin
-account creation. PATCH user updates remain unexposed without reliable target
+account creation, faculty enrollment/list/detail/removal and student own enrollment.
+PATCH user updates remain unexposed without reliable target
 selection. All requirements above are pending unless listed as a verified existing
 route; proposed contract descriptions do not imply server implementations.
 See `FRONTEND_DELIVERY_REVIEW.md` for test evidence and environment limitations.
+See `../docs/STAGE4A_ENROLLMENT_UI.md` for current local enrollment acceptance.

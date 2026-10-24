@@ -1,5 +1,30 @@
 # Frontend API requirements: teacher monitoring
 
+## Stage 4B contract review (proposed, not implemented)
+
+The exact remaining API proposal and implementation gates are in
+[STAGE4B_API_IMPLEMENTATION_PLAN.md](../docs/STAGE4B_API_IMPLEMENTATION_PLAN.md).
+It supersedes the open-ended future requirements below where it defines a
+specific proposal. Stage 4A enrollment is already implemented and must not be
+rebuilt. No new privileged endpoint is enabled by this review.
+
+Necessary proposals: teacher-scoped student attempts/reports/downloads,
+per-experiment cohort analytics, admin user directory/lookup, safe hardening of
+the existing account PATCH, paginated audit filtering, category projection and
+truthful additive score/progress fields on existing student reads. Student-only
+attempt/report APIs stay student-only; admin teacher enrollment keeps explicit
+teacher-scoped routes. The existing PATCH currently lacks self/last-admin
+protection; the proposed policy and concurrency design require agreement before
+exposing update controls. The plan does not claim those safeguards already exist.
+
+Optional: name-only self-service profile correction and limited admin editorial/
+status management if the demo scope explicitly requires them. Full assessment
+authoring, new lab configuration and password recovery are outside this plan.
+Remaining student `%` and `/100` displays must not be mistaken for verified
+normalized scores: the current backend records raw points, including 75-point
+experiments. Historical maxima must come from persisted reports or approved
+attempt snapshots, not today's mutable experiment definition.
+
 ## Verified Stage 5 integration
 
 `GET /api/faculty/dashboard` is used by the frontend. The backend also exposes

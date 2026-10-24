@@ -23,6 +23,7 @@ export function CompletionPanel({
 
     return (
         <section
+            role="status"
             data-testid="completion-panel"
             className="panel mt-6 border-l-4 border-l-success p-6"
         >

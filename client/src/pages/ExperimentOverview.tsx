@@ -1,3 +1,4 @@
+import { LoadingState, ErrorState } from '../components/common/QueryState';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
@@ -5,7 +6,6 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
-  HelpCircle,
   Layers,
   ListOrdered,
   Play,
@@ -23,12 +23,13 @@ export function ExperimentOverview() {
   const [error, setError] = useState('');
   const [starting, setStarting] = useState(false);
 
-  const { data, isLoading } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ['experiment', id],
     queryFn: () => api.get<{ experiment: Experiment }>(`/experiments/${id}`).then(r => r.data.experiment),
   });
 
   const start = async () => {
+    if (starting) return;
     setStarting(true);
     setError('');
     try {
@@ -46,14 +47,8 @@ export function ExperimentOverview() {
     }
   };
 
-  if (isLoading || !data) {
-    return (
-      <div className="panel p-12 text-center max-w-4xl mx-auto">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand border-t-transparent mb-3" />
-        <p className="text-sm font-medium text-muted">Loading experiment module syllabus…</p>
-      </div>
-    );
-  }
+  if (isPending) return <LoadingState message="Loading experiment details..." />;
+  if (isError || !data) return <div className="space-y-4"><Link to="/experiments" className="button-secondary">Back to catalogue</Link><ErrorState message="Unable to load experiment details." onRetry={() => { void refetch(); }} retrying={isFetching} /></div>;
 
   const totalTaskMarks = data.tasks.reduce((sum, t) => sum + t.marks, 0);
   const quizMarks = data.quiz?.questions.reduce((sum, q) => sum + q.marks, 0) ?? 0;
@@ -62,9 +57,9 @@ export function ExperimentOverview() {
   return (
     <div className="max-w-4xl mx-auto space-y-8">
       {/* ── Breadcrumb & Back Link ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap gap-3 items-center justify-between">
         <Link
-          to="/"
+          to="/experiments"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted hover:text-brand transition-colors"
         >
           <ArrowLeft size={14} />
@@ -83,11 +78,11 @@ export function ExperimentOverview() {
         {/* Academic Badges */}
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/5 border border-brand/20 px-2.5 py-0.5 rounded">
-            {data.category ?? 'Network Security'}
+            {data.category || 'Uncategorized'}
           </span>
           <span className="text-xs font-semibold text-muted bg-canvas border border-line px-2.5 py-0.5 rounded flex items-center gap-1">
             <Clock size={12} />
-            <span>{data.estimatedTimeMinutes === 40 ? '35–40 min' : `${data.estimatedTimeMinutes} min`}</span>
+            <span>{data.estimatedTimeMinutes} min</span>
           </span>
           <span className="text-xs font-semibold text-ink bg-canvas border border-line px-2.5 py-0.5 rounded">
             Level: {data.difficulty}
@@ -102,6 +97,8 @@ export function ExperimentOverview() {
           {data.title}
         </h1>
 
+        <p className="page-description whitespace-pre-wrap">{data.description}</p>
+        {data.lab.profile === 'shell-target-v1' && <p className="mt-4 text-sm text-muted">Nmap: use only the assigned target shown in the workspace. The configured provider may use Docker or real Kali; a connection message alone does not verify a successful scan.</p>}
         {/* Aim Statement */}
         <div className="mt-4 p-4 rounded-lg bg-canvas border-l-4 border-brand">
           <p className="text-xs font-bold uppercase tracking-wider text-brand mb-1">Academic Aim</p>
@@ -122,7 +119,7 @@ export function ExperimentOverview() {
 
         {/* Start Lab Button */}
         {error && (
-          <div className="mt-5 p-3.5 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger flex items-center gap-2">
+          <div role="alert" className="mt-5 p-3.5 rounded-lg border border-danger/30 bg-danger/5 text-xs text-danger flex items-center gap-2">
             <ShieldAlert size={16} />
             <span>{error}</span>
           </div>
@@ -130,7 +127,7 @@ export function ExperimentOverview() {
 
         <div className="mt-6 pt-5 border-t border-line flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="text-xs text-muted">
-            Clicking Start Lab provisions a private, isolated container instance on Docker.
+            Start Lab requests the configured isolated lab provider. Provisioning can take a few moments.
           </div>
           <button
             onClick={start}
@@ -182,7 +179,7 @@ export function ExperimentOverview() {
 
       {/* ── Guided Tasks & Verification Breakdown ── */}
       <section className="panel p-6 sm:p-7 bg-surface border border-line">
-        <div className="flex items-center justify-between border-b border-line pb-3 mb-5">
+        <div className="flex flex-wrap gap-3 items-center justify-between border-b border-line pb-3 mb-5">
           <div className="flex items-center gap-2">
             <Layers className="text-brand" size={18} />
             <h2 className="text-base font-bold text-ink uppercase tracking-wide">Guided Practical Tasks</h2>
@@ -228,7 +225,7 @@ export function ExperimentOverview() {
               <h3 className="font-bold text-ink text-sm sm:text-base border-b border-line pb-2 mb-3">
                 {section.title}
               </h3>
-              <p className="text-xs sm:text-sm leading-relaxed text-muted font-normal">{section.content}</p>
+              <p className="text-xs sm:text-sm leading-relaxed text-muted font-normal whitespace-pre-wrap break-words">{section.content}</p>
             </article>
           ))}
         </div>

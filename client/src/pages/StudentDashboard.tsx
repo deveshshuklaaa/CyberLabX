@@ -1,174 +1,57 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import {
-  ArrowRight,
-  Award,
-  BookOpen,
-  CheckCircle2,
-  Clock,
-  Compass,
-  FileText,
-  History,
-  Layers,
-  Play,
-  RotateCcw,
-  Target,
-  User as UserIcon,
-} from 'lucide-react';
+import { ArrowRight, Award, BookOpen, Compass, FileText, History, User as UserIcon } from 'lucide-react';
 import { api } from '../services/api';
-import type { Experiment, RecentAttempt, StudentDashboardData } from '../types/api';
+import type { RecentAttempt, StudentDashboardData } from '../types/api';
 import { useSessionStore } from '../store/sessionStore';
+import { useCatalogue } from '../services/catalogue';
+import { ExperimentCard } from '../components/common/ExperimentCard';
+import { LoadingState, ErrorState } from '../components/common/QueryState';
 
-const dateTime = (value?: string) =>
-  value
-    ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
-    : '—';
-
-const readableStatus = (status: RecentAttempt['status']) =>
-  ({ completed: 'Completed', running: 'In Progress', expired: 'Expired', failed: 'Failed' }[status] ?? status);
+const dateTime = (value?: string) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '\u2014';
+const readableStatus = (status: RecentAttempt['status']) => ({ completed: 'Completed', running: 'In Progress', expired: 'Expired', failed: 'Failed' }[status] ?? status);
 
 export function StudentDashboard() {
-  const user = useSessionStore(s => s.user);
-
-  const progress = useQuery({
-    queryKey: ['student-dashboard'],
-    queryFn: () => api.get<StudentDashboardData>('/student/dashboard').then(r => r.data),
-  });
-
-  const experiments = useQuery({
-    queryKey: ['experiments'],
-    queryFn: () => api.get<{ experiments: Experiment[] }>('/experiments').then(r => r.data),
-  });
-
-  const allExperiments = experiments.data?.experiments ?? [];
+  const user = useSessionStore(state => state.user);
+  const progress = useQuery({ queryKey: ['student-dashboard'], queryFn: () => api.get<StudentDashboardData>('/student/dashboard').then(response => response.data) });
+  const catalogue = useCatalogue();
+  const experiments = catalogue.data?.experiments ?? [];
   const recentAttempts = progress.data?.recentAttempts ?? [];
-
-  // Determine the most relevant "Continue Learning" practicals
-  // 1. In-progress attempts first
-  // 2. Unattempted experiments
-  // 3. Recently completed
-  const runningAttempt = recentAttempts.find(a => a.status === 'running');
-  const runningExperiment = runningAttempt
-    ? allExperiments.find(e => e._id === runningAttempt.experimentId)
-    : null;
-
-  const attemptedIds = new Set(recentAttempts.map(a => a.experimentId));
-  const unattempted = allExperiments.filter(e => !attemptedIds.has(e._id));
-  const primaryExperiment = runningExperiment ?? unattempted[0] ?? allExperiments[0];
-
-  return (
-    <div className="space-y-8" data-testid="student-dashboard">
-      {/* ── 1. Welcome Section ── */}
-      <section className="bg-surface rounded-xl border border-line p-6 sm:p-8 shadow-xs relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-brand" />
-
-        <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider text-brand bg-brand/5 border border-brand/20 px-2.5 py-0.5 rounded">
-              Somaiya Vidyavihar University
-            </span>
-            <span className="text-xs font-semibold text-muted bg-canvas border border-line px-2.5 py-0.5 rounded">
-              Academic Virtual Laboratory Portal
-            </span>
+  const running = recentAttempts.find(attempt => attempt.status === 'running' && experiments.some(experiment => experiment._id === attempt.experimentId));
+  const primary = experiments.find(experiment => experiment._id === running?.experimentId) ?? experiments[0];
+  const stats = progress.data?.stats;
+  return (<div className="space-y-8" data-testid="student-dashboard">
+    <section className="panel p-6 sm:p-8 border-t-4 border-t-brand">
+      <p className="eyebrow">Somaiya Virtual Labs | Student Portal</p>
+      <h1 className="page-title">Welcome back, {user?.firstName || 'student'}.</h1>
+      <p className="mt-2 text-sm text-muted break-words">{user?.firstName} {user?.lastName} {user?.email && `| ${user.email}`}</p>
+      <p className="page-description">Build practical cybersecurity skills in a controlled learning environment.</p>
+      <div className="mt-5 flex flex-wrap gap-3"><Link to="/experiments" className="button">Browse experiments</Link><Link to="/progress" className="button-secondary">View progress</Link></div>
+    </section>
+    {progress.isPending ? <div data-testid="progress-loading"><LoadingState message="Loading your learning progress..." /></div>
+      : progress.isError ? <div data-testid="progress-error"><ErrorState message="Unable to load your learning progress." onRetry={() => { void progress.refetch(); }} retrying={progress.isFetching} /></div>
+      : stats && <section aria-label="Learning statistics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <ProgressStat icon={<BookOpen size={20} />} label="Total Experiments" value={stats.totalExperiments} subtitle="Published catalogue" />
+        <ProgressStat icon={<Compass size={20} />} label="Experiments Attempted" value={stats.experimentsAttempted} subtitle="Distinct experiments" />
+        <ProgressStat icon={<Award size={20} />} label="Experiments Completed" value={`${stats.experimentsCompleted} / ${stats.totalExperiments}`} subtitle="Curriculum progress" />
+        <ProgressStat icon={<Award size={20} />} label="Average Score" value={`${stats.averageScore}%`} subtitle="Best scores per completed experiment" />
+        <ProgressStat icon={<Award size={20} />} label="Best Score" value={`${stats.bestScore}%`} subtitle="Highest completed score" />
+      </section>}
+    <section aria-labelledby="continue-heading" className="panel p-5 sm:p-7 border-l-4 border-l-brand space-y-4">
+      <h2 id="continue-heading" className="text-xl font-bold">Continue Learning</h2>
+      {catalogue.isPending ? <LoadingState message="Loading available experiments..." />
+        : catalogue.isError ? <ErrorState message="Unable to load available experiments." onRetry={() => { void catalogue.refetch(); }} retrying={catalogue.isFetching} />
+        : primary ? <>
+          <p className="text-sm text-muted">{running ? 'You have an in-progress attempt. Open the experiment to continue through the existing lab flow.' : 'Choose a practical from the published catalogue to keep learning.'}</p>
+          <div className="grid gap-5 md:grid-cols-2"><ExperimentCard experiment={primary} />
+            <div className="flex flex-col justify-center gap-3"><p className="font-semibold">{running ? 'Continue your in-progress experiment' : 'Ready for your next practical?'}</p><Link className="button self-start" to={`/experiments/${primary._id}`}>{running ? 'Continue experiment' : 'Explore experiment'}</Link><Link className="text-sm underline" to="/experiments">View all experiments</Link></div>
           </div>
-
-          <h1 className="text-2xl sm:text-3xl font-black text-ink uppercase tracking-tight font-sans">
-            Welcome back, {user?.firstName}.
-          </h1>
-
-          <p className="mt-1 text-sm sm:text-base text-muted leading-relaxed">
-            Continue your practical cybersecurity and network engineering coursework in an isolated, safe university virtual environment.
-          </p>
-        </div>
-      </section>
-
-      {/* ── 2. Summary Statistics ── */}
-      {progress.isLoading ? (
-        <div className="panel p-8 text-center" data-testid="progress-loading">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand border-t-transparent mb-3" />
-          <p className="text-sm font-medium text-muted">Loading your learning progress…</p>
-        </div>
-      ) : progress.error ? (
-        <div className="panel p-6 border-danger/30 bg-danger/5" data-testid="progress-error">
-          <p className="text-sm font-semibold text-danger">Unable to load your learning progress. Please try again.</p>
-        </div>
-      ) : (
-        progress.data && (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <ProgressStat
-              icon={<CheckCircle2 size={20} />}
-              label="Experiments Completed"
-              value={`${progress.data.stats.experimentsCompleted} / ${progress.data.stats.totalExperiments}`}
-              subtitle="Curriculum progress"
-            />
-            <ProgressStat
-              icon={<Target size={20} />}
-              label="Average Score"
-              value={`${progress.data.stats.averageScore}%`}
-              subtitle="Across completed labs"
-            />
-            <ProgressStat
-              icon={<Award size={20} />}
-              label="Best Score"
-              value={`${progress.data.stats.bestScore}%`}
-              subtitle="Highest score achieved"
-            />
-            <ProgressStat
-              icon={<BookOpen size={20} />}
-              label="Experiments Attempted"
-              value={progress.data.stats.experimentsAttempted}
-              subtitle="Total laboratory attempts"
-            />
-          </div>
-        )
-      )}
-
-      {/* ── 3. Continue Learning ── */}
-      {primaryExperiment && (
-        <section className="panel p-6 sm:p-7 bg-surface border border-line shadow-xs">
-          <div className="flex items-center justify-between border-b border-line pb-3 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-brand animate-pulse" />
-              <h2 className="text-xs font-bold uppercase tracking-wider text-brand">Continue Learning</h2>
-            </div>
-            <span className="text-xs text-muted font-medium bg-canvas px-2.5 py-0.5 rounded border border-line">
-              Recommended Practical
-            </span>
-          </div>
-
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
-            <div className="space-y-1.5 max-w-2xl">
-              <div className="flex items-center gap-2 text-xs">
-                <span className="font-bold text-brand uppercase tracking-wider bg-brand/5 border border-brand/20 px-2 py-0.5 rounded">
-                  {primaryExperiment.category ?? 'Network Security'}
-                </span>
-                <span className="text-muted">•</span>
-                <span className="text-muted flex items-center gap-1">
-                  <Clock size={12} />
-                  <span>{primaryExperiment.estimatedTimeMinutes} min</span>
-                </span>
-                <span className="text-muted">•</span>
-                <span className="font-semibold text-ink">Level: {primaryExperiment.difficulty}</span>
-              </div>
-
-              <h3 className="text-lg font-bold text-ink">{primaryExperiment.title}</h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">{primaryExperiment.description}</p>
-            </div>
-
-            <div className="shrink-0 flex items-center gap-3">
-              <Link
-                to={`/experiments/${primaryExperiment._id}`}
-                className="button text-xs py-2 px-5 gap-2 font-bold shadow-xs"
-              >
-                <span>{runningAttempt ? 'Resume Lab Session' : 'Start Experiment'}</span>
-                <Play size={13} />
-              </Link>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* ── 4. Quick Access Navigation Cards ── */}
+        </> : <div><p className="font-semibold">No experiments available yet.</p><p className="page-description">Check the catalogue again when new practicals are published.</p><Link className="button-secondary mt-4" to="/experiments">Browse catalogue</Link></div>}
+    </section>
+    {!catalogue.isPending && !catalogue.isError && experiments.length > 1 && <section aria-labelledby="available-heading" className="space-y-4">
+      <h2 id="available-heading" className="text-xl font-bold">Available experiments</h2>
+      <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{experiments.filter(experiment => experiment._id !== primary?._id).slice(0, 3).map(experiment => <ExperimentCard key={experiment._id} experiment={experiment} />)}</div>
+    </section>}
       <section className="space-y-3">
         <h2 className="text-xs font-bold uppercase tracking-wider text-muted">Quick Access Portal</h2>
 
@@ -262,7 +145,7 @@ export function StudentDashboard() {
       {/* ── 5. Recent Activity Preview (3–5 attempts) ── */}
       {progress.data && (
         <section className="panel overflow-hidden border border-line bg-surface shadow-xs" aria-labelledby="recent-activity-heading">
-          <div className="border-b border-line px-5 py-4 bg-canvas/40 flex items-center justify-between">
+          <div className="border-b border-line px-5 py-4 bg-canvas/40 flex flex-wrap gap-3 items-center justify-between">
             <div>
               <h2 id="recent-activity-heading" className="text-sm font-bold uppercase tracking-wider text-ink">
                 Recent Practical Activity
@@ -281,7 +164,7 @@ export function StudentDashboard() {
           {recentAttempts.length === 0 ? (
             <div className="p-8 text-center" data-testid="recent-empty">
               <BookOpen size={32} className="mx-auto text-muted/50 mb-2" />
-              <p className="text-sm font-bold text-ink">No experiments completed yet.</p>
+              <p className="text-sm font-bold text-ink">No attempts yet.</p>
               <p className="text-xs text-muted mt-0.5">Start with a guided lab when you are ready.</p>
               <Link to="/experiments" className="button mt-4 inline-flex text-xs py-2 px-4 gap-1.5 font-bold">
                 <span>Explore Experiments</span>
@@ -291,13 +174,14 @@ export function StudentDashboard() {
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm">
+                <caption className="sr-only">Your five most recent experiment attempts</caption>
                 <thead className="bg-canvas border-b border-line text-muted text-xs uppercase tracking-wider">
                   <tr>
-                    <th className="px-5 py-3 font-semibold">Experiment</th>
-                    <th className="px-5 py-3 font-semibold">Status</th>
-                    <th className="px-5 py-3 font-semibold">Score</th>
-                    <th className="px-5 py-3 font-semibold">Attempted</th>
-                    <th className="px-5 py-3 font-semibold text-right">Report</th>
+                    <th scope="col" className="px-5 py-3 font-semibold">Experiment</th>
+                    <th scope="col" className="px-5 py-3 font-semibold">Status</th>
+                    <th scope="col" className="px-5 py-3 font-semibold">Score</th>
+                    <th scope="col" className="px-5 py-3 font-semibold">Attempted</th>
+                    <th scope="col" className="px-5 py-3 font-semibold text-right">Report</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -344,10 +228,10 @@ function ProgressStat({
 
 function AttemptRow({ attempt }: { attempt: RecentAttempt }) {
   const statusColor = {
-    completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    running: 'bg-amber-50 text-amber-700 border-amber-200',
-    expired: 'bg-slate-100 text-slate-700 border-slate-200',
-    failed: 'bg-rose-50 text-rose-700 border-rose-200',
+    completed: 'status-success',
+    running: 'status-warning',
+    expired: 'status-neutral',
+    failed: 'status-danger',
   }[attempt.status];
 
   return (
@@ -356,7 +240,7 @@ function AttemptRow({ attempt }: { attempt: RecentAttempt }) {
         {attempt.experimentTitle ?? 'Experiment unavailable'}
       </td>
       <td className="px-5 py-3.5">
-        <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold border ${statusColor}`}>
+        <span className={`status-badge ${statusColor}`}>
           {readableStatus(attempt.status)}
         </span>
       </td>

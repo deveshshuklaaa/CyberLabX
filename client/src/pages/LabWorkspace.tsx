@@ -1,19 +1,17 @@
-import { useCallback, useEffect, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
+import { LoadingState, ErrorState } from '../components/common/QueryState';
+import { useEffect, useState } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AlertTriangle,
   ArrowRight,
   Check,
-  CheckCircle2,
   ClipboardCheck,
   HelpCircle,
-  Radio,
   Send,
   ShieldCheck,
   SquareTerminal,
   StopCircle,
-  X,
 } from 'lucide-react';
 import { api, errorMessage } from '../services/api';
 import type { Experiment, LabSession, RuleResult, QuizSubmitResponse, TaskSubmitResponse } from '../types/api';
@@ -31,48 +29,53 @@ interface Completion {
 
 export function LabWorkspace() {
   const { labSessionId = '' } = useParams();
-  const navigate = useNavigate();
+  return <WorkspaceSession key={labSessionId} labSessionId={labSessionId} />;
+}
+
+function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
+  const queryClient = useQueryClient();
   const state = useLocation().state as { attemptId?: string; experiment?: Experiment } | null;
 
-  const [output, setOutput] = useState('');
   const [command, setCommand] = useState('');
   const [notice, setNotice] = useState('');
   const [ruleResults, setRuleResults] = useState<RuleResult[]>([]);
   const [taskFeedback, setTaskFeedback] = useState('');
+  const [lastGrade, setLastGrade] = useState<{ title: string; score: number } | null>(null);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [busy, setBusy] = useState<'task' | 'quiz' | 'stop' | null>(null);
+  const [connection, setConnection] = useState('Connecting');
+  const [quizFeedback, setQuizFeedback] = useState<QuizSubmitResponse['answers']>([]);
   const [completion, setCompletion] = useState<Completion | null>(null);
 
-  const { data: lab } = useQuery({
+  const labQuery = useQuery({
     queryKey: ['lab', labSessionId],
     queryFn: () => api.get<{ labSession: LabSession }>(`/labs/${labSessionId}`).then(r => r.data.labSession),
     refetchInterval: 15000,
   });
 
-  const attemptId = state?.attemptId ?? lab?.attemptId;
+  const lab = labQuery.data;
+  const attemptId = lab?.attemptId ?? state?.attemptId;
 
-  const { data: attempt } = useQuery({
+  const attemptQuery = useQuery({
     queryKey: ['attempt', attemptId],
     enabled: Boolean(attemptId),
-    queryFn: () => api.get<{ attempt: { experiment: Experiment; currentTaskIndex: number } }>(`/attempts/${attemptId}`).then(r => r.data.attempt),
+    queryFn: () => api.get<{ attempt: { experiment: Experiment; currentTaskIndex: number; status?: string; score?: number } }>(`/attempts/${attemptId}`).then(r => r.data.attempt),
   });
 
-  const experiment = state?.experiment ?? attempt?.experiment;
+  const attempt = attemptQuery.data;
+  const experiment = attempt?.experiment ?? state?.experiment;
 
   useEffect(() => {
-    if (!state?.experiment && attempt) setIndex(attempt.currentTaskIndex);
+    if (attempt) setIndex(attempt.currentTaskIndex);
   }, [attempt, state?.experiment]);
 
-  const append = useCallback((chunk: string) => setOutput(value => (value + chunk).slice(-50000)), []);
-
+  const active = lab?.status === 'running' && !labQuery.isError && !completion && attempt?.status !== 'completed';
+  if (labQuery.isPending) return <LoadingState message="Checking lab session..." />;
+  if (labQuery.isError || !lab) return <div className="space-y-4"><Link to="/experiments" className="button-secondary">Exit to catalogue</Link><ErrorState message="Unable to load lab session." onRetry={() => { void labQuery.refetch(); }} retrying={labQuery.isFetching} /></div>;
+  if (attemptQuery.isError) return <div className="space-y-4"><Link to="/experiments" className="button-secondary">Exit to catalogue (does not stop lab)</Link><ErrorState message="Unable to restore attempt instructions." onRetry={() => { void attemptQuery.refetch(); }} retrying={attemptQuery.isFetching} /></div>;
   if (!experiment) {
-    return (
-      <section className="panel p-12 text-center max-w-2xl mx-auto">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand border-t-transparent mb-3" />
-        <h1 className="text-lg font-bold text-ink">Restoring Virtual Laboratory Workspace…</h1>
-        <p className="mt-1 text-xs text-muted">Retrieving saved student attempt state from Somaiya servers.</p>
-      </section>
-    );
+    return <div className="space-y-4"><p role="status" className="panel p-4">Lab session: {lab.status}. {lab.failureReason}</p><LoadingState message="Restoring laboratory instructions..." /><Link to="/experiments" className="button-secondary">Exit to catalogue (does not stop lab)</Link></div>;
   }
 
   const task = experiment.tasks[index];
@@ -86,9 +89,12 @@ export function LabWorkspace() {
   const terminalPrompt = lab?.terminalPrompt ?? experiment.lab.terminal.promptLabel;
 
   const submit = async () => {
+    if (!active || busy || !attemptQuery.isSuccess) return;
     if (!attemptId || !task || !command.trim()) {
       return setNotice('Enter the command you ran before verification.');
     }
+    setBusy('task');
+    setNotice('');
     try {
       const { data } = await api.post<TaskSubmitResponse>(`/tasks/${task.id}/submit`, {
         attemptId,
@@ -96,20 +102,27 @@ export function LabWorkspace() {
       });
       setRuleResults(data.result.ruleResults ?? []);
       setTaskFeedback(data.result.feedback ?? '');
-      setNotice(data.result.passed ? '' : '');
+      setLastGrade({ title: task.title, score: data.result.score });
+      setNotice(data.result.passed ? 'Task verified. Progress saved.' : 'Task not yet verified. Review the feedback and try again.');
       if (data.result.passed) {
         setIndex(data.currentTaskIndex);
+        queryClient.setQueryData(['attempt', attemptId], { ...attempt, currentTaskIndex: data.currentTaskIndex });
+        void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+        void queryClient.invalidateQueries({ queryKey: ['student-history'] });
         setCommand('');
       }
     } catch (error) {
       setNotice(errorMessage(error));
       setRuleResults([]);
       setTaskFeedback('');
-    }
+      setLastGrade(null);
+    } finally { setBusy(null); }
   };
 
   const quiz = async () => {
-    if (!attemptId) return;
+    if (!attemptId || !active || busy || !attemptQuery.isSuccess) return;
+    setBusy('quiz');
+    setNotice('');
     try {
       const { data } = await api.post<QuizSubmitResponse>(`/quizzes/${experiment._id}/submit`, {
         attemptId,
@@ -118,6 +131,10 @@ export function LabWorkspace() {
           selectedOption,
         })),
       });
+      queryClient.setQueryData(['attempt', attemptId], { ...attempt, status: 'completed', score: data.totalScore });
+      void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['student-history'] });
+      setQuizFeedback(data.answers);
       setCompletion({
         totalScore: data.totalScore,
         quizScore: data.score,
@@ -125,9 +142,10 @@ export function LabWorkspace() {
         downloadUrl: data.downloadUrl,
         reportError: data.reportError,
       });
+      void labQuery.refetch();
     } catch (error) {
       setNotice(errorMessage(error));
-    }
+    } finally { setBusy(null); }
   };
 
   return (
@@ -135,10 +153,10 @@ export function LabWorkspace() {
       {/* ── Top Workspace Header ──────────────────────────────────────── */}
       <div className="panel p-5 bg-surface border border-line shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-brand/5 border border-brand/20 text-brand">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Somaiya Virtual Labs · Session {lab?.status ?? 'Active'}
+
+              Somaiya Virtual Labs · Session {lab.status}
             </span>
             <span className="text-xs text-muted font-medium bg-canvas px-2.5 py-0.5 rounded border border-line">
               Target: <code className="font-mono text-brand font-bold">{targetHostname}</code>
@@ -149,24 +167,40 @@ export function LabWorkspace() {
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Link className="button-secondary text-xs" to="/experiments">Exit to catalogue</Link>
           <button
             className="button-secondary text-xs gap-1.5 py-2 px-3 text-danger border-danger/30 hover:bg-danger/5 hover:border-danger hover:text-danger font-semibold"
+            disabled={Boolean(busy) || ['stopped', 'expired', 'stopping'].includes(lab.status)}
             onClick={async () => {
-              if (window.confirm('Are you sure you want to end this virtual laboratory session? Any unsubmitted task progress will be closed.')) {
-                await api.post(`/labs/${labSessionId}/stop`);
-                navigate('/');
-              }
+              if (!window.confirm('End this lab session? Unsubmitted work will be lost. Saved grading records are retained.')) return;
+              setBusy('stop'); setNotice('');
+              try { await api.post(`/labs/${labSessionId}/stop`); await labQuery.refetch(); void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] }); void queryClient.invalidateQueries({ queryKey: ['student-history'] }); }
+              catch (error) { setNotice(errorMessage(error)); }
+              finally { setBusy(null); }
             }}
           >
             <StopCircle size={15} />
-            <span>End Lab Session</span>
+            <span>{busy === 'stop' ? 'Stopping...' : 'End Lab Session'}</span>
           </button>
         </div>
       </div>
 
       {/* ── Main Split Grid: Guided Tasks & Terminal ───────────────────────────── */}
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
+      <section className="panel p-4 space-y-2" aria-label="Lab session state">
+        <p role="status" className="font-semibold">{({ provisioning: 'Provisioning lab environment', running: 'Lab environment active', stopping: 'Lab cleanup in progress', stopped: 'Lab session stopped', expired: 'Lab session expired', failed: 'Lab session failed' } as Record<string, string>)[lab.status] ?? `Lab status: ${lab.status}`}</p>
+        {lab.failureReason && <p className="text-sm text-danger">{lab.failureReason}</p>}
+        <p className="text-xs text-muted">{active ? `Expires: ${new Date(lab.expiresAt).toLocaleString()}. Exiting this page does not stop the lab; use End Lab Session to release it.` : 'Terminal input and grading are unavailable while the lab is not active.'}</p>
+        {lab.status === 'running' && <p className="text-xs text-muted">Provider: {lab.backend === 'qemu' ? 'Real Kali VM' : lab.backend === 'docker' ? 'Docker' : 'Not specified'}</p>}
+      </section>
+      {notice && <p role="alert" className="panel p-4 text-sm">{notice}</p>}
+      <details className="panel p-5"><summary className="font-bold cursor-pointer">Experiment instructions and safety</summary>
+        <p className="page-description">{experiment.aim}</p>
+        <ol className="list-decimal pl-5 mt-3 space-y-2 text-sm">{experiment.procedureSections.map((step, i) => <li key={i}>{step}</li>)}</ol>
+        <p className="mt-4 text-sm font-semibold">Use only the assigned target: {targetHostname}. Never scan external systems.</p>
+        {experiment.lab.profile === 'shell-target-v1' && <p className="mt-2 text-sm">Nmap: execute the requested scan in the terminal, then submit the exact command for server verification. For real Kali, privileged SYN and OS scans may require sudo.</p>}
+      </details>
+      <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)]">
         {/* ── Task Sidebar ──────────────────────────────────────── */}
         <aside className="panel p-5 bg-surface border border-line flex flex-col justify-between">
           <div>
@@ -188,6 +222,7 @@ export function LabWorkspace() {
                 return (
                   <div
                     key={item.id}
+                    aria-current={isCurrent ? 'step' : undefined}
                     className={`rounded-lg border p-3.5 transition-all ${
                       isPassed
                         ? 'border-emerald-300 bg-emerald-50/60'
@@ -249,67 +284,65 @@ export function LabWorkspace() {
         </aside>
 
         {/* ── Terminal & Task Verification Section ───────────────────────────── */}
-        <div className="space-y-4">
+        <div className="space-y-4 min-w-0">
           <div className="panel overflow-hidden border border-line bg-terminal shadow-md rounded-xl">
             {/* Terminal Window Header */}
-            <div className="flex items-center justify-between border-b border-slate-700/80 bg-[#161B26] px-4 py-2.5 text-xs text-slate-200">
+            <div className="flex flex-wrap gap-3 items-center justify-between border-b border-slate-700/80 bg-[#161B26] px-4 py-2.5 text-xs text-slate-200">
               <div className="flex items-center gap-2">
                 <SquareTerminal size={15} className="text-emerald-400" />
                 <span className="font-mono text-slate-300 font-semibold">{terminalPrompt}</span>
               </div>
               <div className="flex items-center gap-3 text-[11px] font-mono">
                 <span className="text-slate-400">Target: <span className="text-emerald-300 font-bold">{targetHostname}</span></span>
-                <span className="text-emerald-400 flex items-center gap-1">● Online</span>
+                <span role="status" className="text-slate-200">{active ? connection : 'Disconnected'}</span>
               </div>
             </div>
 
             {/* Terminal Canvas */}
             <div className="p-2 bg-terminal min-h-[360px]">
-              <Terminal labSessionId={labSessionId} targetHostname={targetHostname} onOutput={append} />
+              {active ? <Terminal labSessionId={labSessionId} targetHostname={targetHostname} onConnectionChange={setConnection} /> : <p className="p-6 text-sm text-slate-200">{completion ? 'Assessment submitted. Terminal closed.' : `Terminal unavailable: ${lab.status}.`}</p>}
             </div>
           </div>
 
           {/* Verification Command Submission Box */}
           {task && (
             <div className="panel p-5 bg-surface border border-line shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold uppercase tracking-wider text-ink">
+              <div className="flex flex-wrap gap-2 items-center justify-between">
+                <label htmlFor="verification-command" className="text-xs font-bold uppercase tracking-wider text-ink">
                   Task {task.order} Command Submission
                 </label>
                 <span className="text-xs text-muted">Enter exact tool invocation used in terminal</span>
               </div>
 
-              <div className="flex gap-2.5">
+              <div className="flex flex-col sm:flex-row gap-2.5">
                 <input
+                  id="verification-command"
+                  disabled={!active || Boolean(busy) || !attemptQuery.isSuccess}
                   className="field font-mono text-xs sm:text-sm bg-canvas"
                   value={command}
                   onChange={event => setCommand(event.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') submit(); }}
-                  placeholder={`e.g. nmap -sn ${targetHostname}`}
+                  placeholder={experiment.lab.profile === 'shell-target-v1' ? `e.g. nmap -sn ${targetHostname}` : 'Enter the command you executed'}
                 />
                 <button
                   className="button text-xs gap-1.5 py-2 px-5 font-bold shadow-xs shrink-0"
+                  disabled={!active || Boolean(busy) || !attemptQuery.isSuccess}
                   onClick={submit}
                 >
                   <Send size={14} />
-                  <span>Verify Task</span>
+                  <span>{busy === 'task' ? 'Verifying...' : 'Verify Task'}</span>
                 </button>
               </div>
 
-              {notice && (
-                <p className="text-xs font-medium text-amber-700 bg-amber-50 p-2.5 rounded border border-amber-200">
-                  {notice}
-                </p>
-              )}
-
-              <RuleResults ruleResults={ruleResults} feedback={taskFeedback} />
             </div>
           )}
+          {lastGrade && <p className="text-sm font-semibold" role="status">Last verification: {lastGrade.title} | {lastGrade.score} points awarded</p>}
+          <RuleResults ruleResults={ruleResults} feedback={taskFeedback} />
         </div>
       </div>
 
       {/* ── Section: Knowledge Check Quiz ────────────────────────────────────────── */}
-      {index >= experiment.tasks.length && !completion && (
+      {index >= experiment.tasks.length && !completion && active && attemptQuery.isSuccess && (
         <section className="panel p-6 sm:p-8 bg-surface border border-line shadow-xs space-y-6">
           <div className="border-b border-line pb-4 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
@@ -366,16 +399,16 @@ export function LabWorkspace() {
             ))}
           </div>
 
-          <div className="pt-4 border-t border-line flex items-center justify-between">
+          <div className="pt-4 border-t border-line flex flex-wrap gap-3 items-center justify-between">
             <span className="text-xs text-muted">
               {Object.keys(answers).length} of {experiment.quiz.questions.length} questions answered
             </span>
             <button
-              disabled={Object.keys(answers).length !== experiment.quiz.questions.length}
+              disabled={Boolean(busy) || Object.keys(answers).length !== experiment.quiz.questions.length}
               className="button text-sm gap-2 py-2.5 px-6 font-bold shadow-xs"
               onClick={quiz}
             >
-              <span>Submit Practical &amp; Generate Report</span>
+              <span>{busy === 'quiz' ? 'Submitting assessment...' : 'Submit Practical & Generate Report'}</span>
               <ArrowRight size={16} />
             </button>
           </div>
@@ -383,6 +416,8 @@ export function LabWorkspace() {
       )}
 
       {/* ── Section: Completion Panel ────────────────────────────────────── */}
+      {attempt?.status === 'completed' && !completion && <section className="panel p-5 space-y-3" aria-label="Saved completion"><h2 className="text-lg font-bold">Attempt completed</h2><p>Saved total score: {attempt.score ?? 'Unavailable'}</p><p className="text-sm text-muted">Your completed attempt is saved. Open history to check report availability.</p><Link className="button-secondary" to="/history">View attempt history</Link></section>}
+      {completion && <section className="panel p-5 space-y-3" aria-label="Quiz feedback"><h2 className="text-lg font-bold">Assessment feedback</h2>{quizFeedback.map(answer => <div key={answer.questionId} className="border-b border-line pb-3"><p className="font-semibold">{experiment.quiz.questions.find(question => question.id === answer.questionId)?.question}</p><p className="text-sm">{answer.correct ? 'Correct' : 'Incorrect'}: {answer.explanation}</p></div>)}<Link className="button-secondary" to="/history">View attempt history</Link></section>}
       {completion && (
         <CompletionPanel
           totalScore={completion.totalScore}

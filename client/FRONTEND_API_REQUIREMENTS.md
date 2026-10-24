@@ -139,3 +139,13 @@ configuration. Existing catalogue data is read-only; no CRUD routes are assumed.
 For activity beyond the most recent 20, agree admin-only server pagination,
 action/actor/resource/date filters, deterministic ordering and retention policy.
 The current client-side filters apply only to the fetched snapshot.
+
+
+## Final delivery boundary
+
+Implemented API consumers are the student dashboard/history, published catalogue
+and detail, existing lab/task/quiz/report flows, faculty/admin aggregates and admin
+account creation. PATCH user updates remain unexposed without reliable target
+selection. All requirements above are pending unless listed as a verified existing
+route; proposed contract descriptions do not imply server implementations.
+See `FRONTEND_DELIVERY_REVIEW.md` for test evidence and environment limitations.

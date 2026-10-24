@@ -6,17 +6,18 @@
 @layer base {
   body { @apply m-0 min-w-[320px] bg-canvas font-sans text-ink; }
   button, input, select, textarea { font: inherit; }
-  :where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid #094F9F; outline-offset: 3px; }
+  :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid #094F9F; outline-offset: 3px; }
   :where(h1, h2, h3) { overflow-wrap: anywhere; }
   button { touch-action: manipulation; }
   a { @apply text-link; }
+  footer a { @apply text-footer-text hover:text-white; }
 }
 
 @layer components {
   .panel { @apply rounded-xl border border-line bg-surface shadow-sm; }
   .button { @apply inline-flex items-center justify-center min-h-11 rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark active:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60; }
   .button-secondary { @apply inline-flex items-center justify-center min-h-11 rounded-lg border border-line bg-surface px-4 py-2 font-semibold text-ink transition hover:border-brand hover:bg-[#FDF4F4] hover:text-brand-dark; }
-  .field { @apply w-full min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15; }
+  .field { @apply w-full min-w-0 min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15; }
   .page-heading { @apply border-b border-line pb-5; }
   .page-title { @apply text-2xl sm:text-3xl font-bold tracking-tight text-ink; }
   .page-description { @apply mt-2 max-w-3xl text-sm leading-relaxed text-muted; }

@@ -6,7 +6,6 @@ import {
   BookOpen,
   CheckCircle2,
   Clock,
-  HelpCircle,
   Layers,
   ListOrdered,
   Play,

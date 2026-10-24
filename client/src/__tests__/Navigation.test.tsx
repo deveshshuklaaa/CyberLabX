@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, within, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,7 +11,7 @@ import { api } from '../services/api';
 vi.mock('../services/api', () => ({ api: { post: vi.fn() } }));
 function setup(role: Role = 'student', path = '/student') {
   useSessionStore.setState({ user: { id: 's1', firstName: 'Demo', lastName: 'Student', email: 'demo@example.test', role, isActive: true } });
-  return render(<MemoryRouter initialEntries={[path]}><UniversityHeader /><UniversityFooter /></MemoryRouter>);
+  return render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={[path]}><UniversityHeader /><UniversityFooter /></MemoryRouter></QueryClientProvider>);
 }
 
 describe('Portal navigation', () => {
@@ -57,4 +58,14 @@ describe('Portal navigation', () => {
     await waitFor(() => expect(useSessionStore.getState().user).toBeNull());
     expect(api.post).toHaveBeenCalledWith('/auth/logout');
   });
+  it('clears cached authenticated records on logout', async () => {
+    const query = new QueryClient();
+    query.setQueryData(['student-history'], { attempts: [{ attemptId: 'private-record' }] });
+    vi.mocked(api.post).mockResolvedValue({ data: {} });
+    useSessionStore.setState({ user: { id: 's1', firstName: 'Demo', lastName: 'Student', email: 'demo@example.test', role: 'student', isActive: true } });
+    render(<QueryClientProvider client={query}><MemoryRouter><UniversityHeader /></MemoryRouter></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign Out' }));
+    await waitFor(() => expect(query.getQueryData(['student-history'])).toBeUndefined());
+  });
+
 });

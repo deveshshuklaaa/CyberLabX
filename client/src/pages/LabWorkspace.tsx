@@ -1,21 +1,17 @@
 import { Link } from 'react-router-dom';
 import { LoadingState, ErrorState } from '../components/common/QueryState';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useLocation, useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  AlertTriangle,
   ArrowRight,
   Check,
-  CheckCircle2,
   ClipboardCheck,
   HelpCircle,
-  Radio,
   Send,
   ShieldCheck,
   SquareTerminal,
   StopCircle,
-  X,
 } from 'lucide-react';
 import { api, errorMessage } from '../services/api';
 import type { Experiment, LabSession, RuleResult, QuizSubmitResponse, TaskSubmitResponse } from '../types/api';
@@ -33,9 +29,13 @@ interface Completion {
 
 export function LabWorkspace() {
   const { labSessionId = '' } = useParams();
+  return <WorkspaceSession key={labSessionId} labSessionId={labSessionId} />;
+}
+
+function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
+  const queryClient = useQueryClient();
   const state = useLocation().state as { attemptId?: string; experiment?: Experiment } | null;
 
-  const [output, setOutput] = useState('');
   const [command, setCommand] = useState('');
   const [notice, setNotice] = useState('');
   const [ruleResults, setRuleResults] = useState<RuleResult[]>([]);
@@ -55,12 +55,12 @@ export function LabWorkspace() {
   });
 
   const lab = labQuery.data;
-  const attemptId = state?.attemptId ?? lab?.attemptId;
+  const attemptId = lab?.attemptId ?? state?.attemptId;
 
   const attemptQuery = useQuery({
     queryKey: ['attempt', attemptId],
     enabled: Boolean(attemptId),
-    queryFn: () => api.get<{ attempt: { experiment: Experiment; currentTaskIndex: number } }>(`/attempts/${attemptId}`).then(r => r.data.attempt),
+    queryFn: () => api.get<{ attempt: { experiment: Experiment; currentTaskIndex: number; status?: string; score?: number } }>(`/attempts/${attemptId}`).then(r => r.data.attempt),
   });
 
   const attempt = attemptQuery.data;
@@ -70,9 +70,7 @@ export function LabWorkspace() {
     if (attempt) setIndex(attempt.currentTaskIndex);
   }, [attempt, state?.experiment]);
 
-  const append = useCallback((chunk: string) => setOutput(value => (value + chunk).slice(-50000)), []);
-
-  const active = lab?.status === 'running' && !labQuery.isError && !completion;
+  const active = lab?.status === 'running' && !labQuery.isError && !completion && attempt?.status !== 'completed';
   if (labQuery.isPending) return <LoadingState message="Checking lab session..." />;
   if (labQuery.isError || !lab) return <div className="space-y-4"><Link to="/experiments" className="button-secondary">Exit to catalogue</Link><ErrorState message="Unable to load lab session." onRetry={() => { void labQuery.refetch(); }} retrying={labQuery.isFetching} /></div>;
   if (attemptQuery.isError) return <div className="space-y-4"><Link to="/experiments" className="button-secondary">Exit to catalogue (does not stop lab)</Link><ErrorState message="Unable to restore attempt instructions." onRetry={() => { void attemptQuery.refetch(); }} retrying={attemptQuery.isFetching} /></div>;
@@ -108,6 +106,9 @@ export function LabWorkspace() {
       setNotice(data.result.passed ? 'Task verified. Progress saved.' : 'Task not yet verified. Review the feedback and try again.');
       if (data.result.passed) {
         setIndex(data.currentTaskIndex);
+        queryClient.setQueryData(['attempt', attemptId], { ...attempt, currentTaskIndex: data.currentTaskIndex });
+        void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+        void queryClient.invalidateQueries({ queryKey: ['student-history'] });
         setCommand('');
       }
     } catch (error) {
@@ -130,6 +131,9 @@ export function LabWorkspace() {
           selectedOption,
         })),
       });
+      queryClient.setQueryData(['attempt', attemptId], { ...attempt, status: 'completed', score: data.totalScore });
+      void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
+      void queryClient.invalidateQueries({ queryKey: ['student-history'] });
       setQuizFeedback(data.answers);
       setCompletion({
         totalScore: data.totalScore,
@@ -171,7 +175,7 @@ export function LabWorkspace() {
             onClick={async () => {
               if (!window.confirm('End this lab session? Unsubmitted work will be lost. Saved grading records are retained.')) return;
               setBusy('stop'); setNotice('');
-              try { await api.post(`/labs/${labSessionId}/stop`); await labQuery.refetch(); }
+              try { await api.post(`/labs/${labSessionId}/stop`); await labQuery.refetch(); void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] }); void queryClient.invalidateQueries({ queryKey: ['student-history'] }); }
               catch (error) { setNotice(errorMessage(error)); }
               finally { setBusy(null); }
             }}
@@ -296,7 +300,7 @@ export function LabWorkspace() {
 
             {/* Terminal Canvas */}
             <div className="p-2 bg-terminal min-h-[360px]">
-              {active ? <Terminal labSessionId={labSessionId} targetHostname={targetHostname} onOutput={append} onConnectionChange={setConnection} /> : <p className="p-6 text-sm text-slate-200">{completion ? 'Assessment submitted. Terminal closed.' : `Terminal unavailable: ${lab.status}.`}</p>}
+              {active ? <Terminal labSessionId={labSessionId} targetHostname={targetHostname} onConnectionChange={setConnection} /> : <p className="p-6 text-sm text-slate-200">{completion ? 'Assessment submitted. Terminal closed.' : `Terminal unavailable: ${lab.status}.`}</p>}
             </div>
           </div>
 
@@ -412,6 +416,7 @@ export function LabWorkspace() {
       )}
 
       {/* ── Section: Completion Panel ────────────────────────────────────── */}
+      {attempt?.status === 'completed' && !completion && <section className="panel p-5 space-y-3" aria-label="Saved completion"><h2 className="text-lg font-bold">Attempt completed</h2><p>Saved total score: {attempt.score ?? 'Unavailable'}</p><p className="text-sm text-muted">Your completed attempt is saved. Open history to check report availability.</p><Link className="button-secondary" to="/history">View attempt history</Link></section>}
       {completion && <section className="panel p-5 space-y-3" aria-label="Quiz feedback"><h2 className="text-lg font-bold">Assessment feedback</h2>{quizFeedback.map(answer => <div key={answer.questionId} className="border-b border-line pb-3"><p className="font-semibold">{experiment.quiz.questions.find(question => question.id === answer.questionId)?.question}</p><p className="text-sm">{answer.correct ? 'Correct' : 'Incorrect'}: {answer.explanation}</p></div>)}<Link className="button-secondary" to="/history">View attempt history</Link></section>}
       {completion && (
         <CompletionPanel

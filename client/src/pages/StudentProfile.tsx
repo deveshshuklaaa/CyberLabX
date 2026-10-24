@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
@@ -7,6 +8,7 @@ import { PageHeading } from '../components/common/PageHeading';
 import { LoadingState } from '../components/common/QueryState';
 
 export function StudentProfile() {
+  const queryClient = useQueryClient();
   const { user, loaded, setUser } = useSessionStore();
   const [signingOut, setSigningOut] = useState(false);
   const navigate = useNavigate();
@@ -14,7 +16,7 @@ export function StudentProfile() {
     if (signingOut) return;
     setSigningOut(true);
     try { await api.post('/auth/logout'); } catch { /* Retain existing local session clearing on request failure. */ }
-    finally { setUser(null); navigate('/login'); }
+    finally { queryClient.clear(); setUser(null); navigate('/login'); }
   };
   if (!loaded) return <LoadingState message="Loading authenticated account..." />;
   if (!user) return <div className="state-panel"><p>Your session is unavailable. Sign in to view your account.</p><Link to="/login" className="button mt-4">Sign in</Link></div>;

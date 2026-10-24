@@ -5,7 +5,7 @@ import { io, type Socket } from 'socket.io-client';
 import '@xterm/xterm/css/xterm.css';
 
 export function Terminal({ labSessionId, targetHostname, onOutput, onConnectionChange }: {
-  labSessionId: string; targetHostname: string; onOutput: (value: string) => void;
+  labSessionId: string; targetHostname: string; onOutput?: (value: string) => void;
   onConnectionChange?: (status: string) => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
@@ -37,7 +37,7 @@ export function Terminal({ labSessionId, targetHostname, onOutput, onConnectionC
     });
     socket.on('disconnect', () => { ready = false; onConnectionChange?.('Disconnected; waiting to reconnect'); });
     socket.on('connect_error', () => { ready = false; onConnectionChange?.('Connection failed; retrying'); });
-    socket.on('terminal:output', (data: string) => { term.write(data); onOutput(data); });
+    socket.on('terminal:output', (data: string) => { term.write(data); onOutput?.(data); });
     socket.on('terminal:error', ({ message }: { message: string }) => {
       onConnectionChange?.('Terminal error');
       term.write(`\r\n\x1b[31m${message}\x1b[0m\r\n`);

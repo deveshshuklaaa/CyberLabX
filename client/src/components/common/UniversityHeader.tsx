@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ExternalLink, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
@@ -7,6 +8,7 @@ import { api } from '../../services/api';
 import { useSessionStore } from '../../store/sessionStore';
 
 export function UniversityHeader() {
+  const queryClient = useQueryClient();
   const { user, setUser } = useSessionStore();
   const navigate = useNavigate();
   const location = useLocation();
@@ -16,7 +18,7 @@ export function UniversityHeader() {
   const close = () => setOpenPath(null);
   const logout = async () => {
     try { await api.post('/auth/logout'); } catch { /* Preserve existing logout behavior. */ }
-    finally { close(); setUser(null); navigate('/login'); }
+    finally { close(); queryClient.clear(); setUser(null); navigate('/login'); }
   };
   return <header className="border-b border-line bg-surface shadow-sm">
     <div className="bg-brand-dark text-white px-4 sm:px-6 py-2 text-xs">

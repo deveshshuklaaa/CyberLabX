@@ -1,5 +1,5 @@
 import React from 'react';
-import { ExternalLink, Mail, MapPin, Phone, ShieldCheck, Heart } from 'lucide-react';
+import { ExternalLink, MapPin, ShieldCheck } from 'lucide-react';
 import { PortalNavigation } from './PortalNavigation';
 import { BrandLockup } from './BrandLockup';
 

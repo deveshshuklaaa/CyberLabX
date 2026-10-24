@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { LabWorkspace } from '../pages/LabWorkspace';
 import { ExperimentOverview } from '../pages/ExperimentOverview';
@@ -26,7 +26,7 @@ function responses(path: string) {
 }
 function setup(path = '/labs/l1') {
   const query = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return render(<QueryClientProvider client={query}><MemoryRouter initialEntries={[path]}><Routes>
+  return render(<QueryClientProvider client={query}><MemoryRouter initialEntries={[path]}><Link to="/labs/l2">Other session</Link><Routes>
     <Route path="/labs/:labSessionId" element={<LabWorkspace />} /><Route path="/experiments/:id" element={<ExperimentOverview />} /><Route path="/experiments" element={<p>Catalogue destination</p>} />
   </Routes></MemoryRouter></QueryClientProvider>);
 }
@@ -100,6 +100,14 @@ describe('Workspace API-driven states', () => {
     expect(screen.getByPlaceholderText('Enter the command you executed')).toBeInTheDocument();
     expect(screen.queryByText(/Nmap: execute/)).not.toBeInTheDocument();
     expect(screen.getByLabelText('Terminal transport mounted')).toBeInTheDocument();
+  });
+  it('resets command and grading state when the route changes to another session', async () => {
+    setup(); const input = await screen.findByLabelText(/Command Submission/);
+    await waitFor(() => expect(input).toBeEnabled());
+    fireEvent.change(input, { target: { value: 'old session command' } });
+    fireEvent.click(screen.getByRole('link', { name: 'Other session' }));
+    await waitFor(() => expect(screen.getByLabelText(/Command Submission/)).toHaveValue(''));
+    expect(api.get).toHaveBeenCalledWith('/labs/l2');
   });
   it('recovers from session lookup failure', async () => {
     vi.mocked(api.get).mockRejectedValueOnce(new Error('offline')); setup();

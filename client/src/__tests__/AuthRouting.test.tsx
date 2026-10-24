@@ -35,6 +35,15 @@ describe('actual app protected routes', () => {
   ])('routes %s at %s safely', async (role, path, expected) => {
     visit(path, role as Role); expect(await screen.findByText(expected)).toBeInTheDocument();
   });
+  it.each([
+    ['/student', 'Student home'], ['/experiments', 'Experiments'], ['/experiments/e1', 'Experiment'],
+    ['/labs/l1', 'Lab'], ['/progress', 'Progress'], ['/history', 'History'], ['/profile', 'Profile'],
+  ].flatMap(([path, expected]) => [
+    [path, 'student', expected], [path, 'faculty', 'Teacher home'], [path, 'admin', 'Admin home'], [path, '', 'Login page'],
+  ]))('checks student route %s for role %s', async (path, role, expected) => {
+    visit(path, role ? role as Role : undefined);
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+  });
   it('waits for session bootstrap before rendering protected content', () => {
     useSessionStore.setState({ loaded: false }); visit('/admin');
     expect(screen.getByText('Loading Somaiya Virtual Labs…')).toBeInTheDocument();

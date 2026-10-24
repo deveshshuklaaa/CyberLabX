@@ -21,7 +21,7 @@ export type LabDefinition =
 export interface Experiment {
     _id: string; title: string; slug: string; description: string; aim: string;
     objectives: string[]; theorySections: { title: string; content: string }[];
-    procedureSections: string[]; category?: string; difficulty: string; estimatedTimeMinutes: number;
+    procedureSections: string[]; category?: string | null; difficulty: string; estimatedTimeMinutes: number;
     lab: LabDefinition; tasks: Task[]; quiz: { questions: Question[] }; taskCount?: number;
 }
 
@@ -30,11 +30,13 @@ export interface LabSession {
     targetHostname?: string; targetDisplayName?: string; terminalPrompt?: string; resources?: { role: string; hostname: string; displayName: string }[]; expiresAt: string; failureReason?: string;
 }
 
-export interface StudentDashboardStats { totalExperiments: number; experimentsAttempted: number; experimentsCompleted: number; averageScore: number; bestScore: number; }
-export interface RecentAttempt { attemptId: string; experimentId: string; experimentTitle?: string; status: 'running' | 'completed' | 'expired' | 'failed'; score: number | null; startedAt: string; completedAt?: string; reportAvailable: boolean; reportId?: string; }
-export interface StudentDashboardData { stats: StudentDashboardStats; recentAttempts: RecentAttempt[]; }
+export interface AssessmentScore { value: number | null; max: number | null; percentage: number | null; basis: 'report' | 'unknown' | 'attempt-snapshot'; }
+export interface RecordedTaskProgress { verifiedTaskCount: number; requiredTaskCount: number | null; percentage: number | null; basis: string; }
+export interface StudentDashboardStats { totalExperiments: number; experimentsAttempted: number; experimentsCompleted: number; publishedExperimentsCompleted?: number; averageScore: number; bestScore: number; }
+export interface RecentAttempt { attemptId: string; experimentId: string; experimentTitle?: string; status: 'running' | 'completed' | 'expired' | 'failed'; score: number | null; assessmentScore?: AssessmentScore; taskProgress?: RecordedTaskProgress; startedAt: string; completedAt?: string; reportAvailable: boolean; reportId?: string; }
+export interface StudentDashboardData { scoreUnit?: 'points'; stats: StudentDashboardStats; recentAttempts: RecentAttempt[]; }
 
-export interface StudentHistoryAttempt { attemptId: string; experimentId: string; experimentTitle?: string; experimentCategory?: string; status: 'running' | 'completed' | 'expired' | 'failed'; score: number | null; startedAt: string; completedAt?: string; reportAvailable: boolean; reportId?: string; }
+export interface StudentHistoryAttempt extends RecentAttempt { experimentCategory?: string; }
 export interface StudentHistoryData { attempts: StudentHistoryAttempt[]; }
 
 

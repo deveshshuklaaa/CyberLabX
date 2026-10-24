@@ -1,5 +1,5 @@
-import { Award, Download, AlertTriangle } from 'lucide-react';
-import { api } from '../../services/api';
+import { Award, AlertTriangle } from 'lucide-react';
+import { PdfDownloadLink } from '../common/PdfDownloadLink';
 
 interface Props {
     totalScore: number;
@@ -16,10 +16,7 @@ export function CompletionPanel({
     downloadUrl,
     reportError,
 }: Props) {
-    const origin = (api.defaults.baseURL ?? '').replace(/\/api\/?$/, '');
-    const fullDownloadUrl = downloadUrl
-        ? `${origin}${downloadUrl}`
-        : null;
+    const reportId = downloadUrl?.match(/^\/api\/reports\/([a-z\d_-]+)\/download$/i)?.[1];
 
     return (
         <section
@@ -47,25 +44,16 @@ export function CompletionPanel({
                 </div>
             </div>
 
-            {fullDownloadUrl && (
-                <a
-                    data-testid="download-report"
-                    href={fullDownloadUrl}
-                    className="button mt-5 inline-flex gap-2"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <Download size={16} />
-                    Download Report
-                </a>
-            )}
+            {reportId && <div className="mt-5"><PdfDownloadLink reportId={reportId} testId="download-report" label="Download Report" /></div>}
+            {downloadUrl && !reportId && <p className="text-sm text-muted mt-4">Report download is unavailable. Check your attempt history.</p>}
 
             {reportError && !downloadUrl && (
                 <div className="mt-4 flex items-center gap-2 rounded-lg border border-accent/30 bg-accent/10 px-4 py-3 text-sm text-ink">
                     <AlertTriangle size={16} className="shrink-0" />
-                    <span>{reportError}</span>
+                    <span>Report generation failed. Your attempt remains saved. Check history for availability, or contact your teacher if it remains unavailable.</span>
                 </div>
             )}
+            {!downloadUrl && !reportError && <p className="text-sm text-muted mt-4">No PDF is currently available. Check your attempt history for saved report availability.</p>}
         </section>
     );
 }

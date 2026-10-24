@@ -1,22 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Award, BookOpen, Compass, FileText, History, User as UserIcon } from 'lucide-react';
-import { api } from '../services/api';
-import type { RecentAttempt, StudentDashboardData } from '../types/api';
+import { ArrowRight, Award, BookOpen, Compass, History, User as UserIcon } from 'lucide-react';
+import { useStudentDashboard } from '../services/studentDashboard';
+import { scoreText } from '../services/studentScores';
+import { attemptDate } from '../services/studentHistory';
+import { ReportLink } from '../components/common/ReportLink';
+import type { RecentAttempt } from '../types/api';
 import { useSessionStore } from '../store/sessionStore';
 import { useCatalogue } from '../services/catalogue';
 import { ExperimentCard } from '../components/common/ExperimentCard';
 import { LoadingState, ErrorState } from '../components/common/QueryState';
 
-const dateTime = (value?: string) => value ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '\u2014';
+const dateTime = attemptDate;
 const readableStatus = (status: RecentAttempt['status']) => ({ completed: 'Completed', running: 'In Progress', expired: 'Expired', failed: 'Failed' }[status] ?? status);
 
 export function StudentDashboard() {
   const user = useSessionStore(state => state.user);
-  const progress = useQuery({ queryKey: ['student-dashboard'], queryFn: () => api.get<StudentDashboardData>('/student/dashboard').then(response => response.data) });
+  const progress = useStudentDashboard();
   const catalogue = useCatalogue();
   const experiments = catalogue.data?.experiments ?? [];
-  const recentAttempts = progress.data?.recentAttempts ?? [];
+  const recentAttempts = progress.isError ? [] : progress.data?.recentAttempts ?? [];
   const running = recentAttempts.find(attempt => attempt.status === 'running' && experiments.some(experiment => experiment._id === attempt.experimentId));
   const primary = experiments.find(experiment => experiment._id === running?.experimentId) ?? experiments[0];
   const stats = progress.data?.stats;
@@ -33,9 +35,9 @@ export function StudentDashboard() {
       : stats && <section aria-label="Learning statistics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <ProgressStat icon={<BookOpen size={20} />} label="Total Experiments" value={stats.totalExperiments} subtitle="Published catalogue" />
         <ProgressStat icon={<Compass size={20} />} label="Experiments Attempted" value={stats.experimentsAttempted} subtitle="Distinct experiments" />
-        <ProgressStat icon={<Award size={20} />} label="Experiments Completed" value={`${stats.experimentsCompleted} / ${stats.totalExperiments}`} subtitle="Curriculum progress" />
-        <ProgressStat icon={<Award size={20} />} label="Average Score" value={`${stats.averageScore}%`} subtitle="Best scores per completed experiment" />
-        <ProgressStat icon={<Award size={20} />} label="Best Score" value={`${stats.bestScore}%`} subtitle="Highest completed score" />
+        <ProgressStat icon={<Award size={20} />} label="Experiments Completed" value={stats.publishedExperimentsCompleted === undefined ? 'Unavailable' : `${stats.publishedExperimentsCompleted} / ${stats.totalExperiments}`} subtitle="Curriculum progress" />
+        <ProgressStat icon={<Award size={20} />} label="Average Score" value={`${stats.averageScore} points`} subtitle="Mean of best completed points per experiment" />
+        <ProgressStat icon={<Award size={20} />} label="Best Score" value={`${stats.bestScore} points`} subtitle="Highest recorded completed points" />
       </section>}
     <section aria-labelledby="continue-heading" className="panel p-5 sm:p-7 border-l-4 border-l-brand space-y-4">
       <h2 id="continue-heading" className="text-xl font-bold">Continue Learning</h2>
@@ -131,7 +133,7 @@ export function StudentDashboard() {
                 Student Profile
               </h3>
               <p className="text-xs text-muted mt-1 leading-relaxed">
-                Check enrollment credentials, institutional affiliation, and account status.
+                Review account identity, teacher assignment, and session status.
               </p>
             </div>
             <div className="mt-4 pt-3 border-t border-line flex items-center justify-between text-xs font-semibold text-brand">
@@ -143,7 +145,7 @@ export function StudentDashboard() {
       </section>
 
       {/* ── 5. Recent Activity Preview (3–5 attempts) ── */}
-      {progress.data && (
+      {progress.data && !progress.isError && (
         <section className="panel overflow-hidden border border-line bg-surface shadow-xs" aria-labelledby="recent-activity-heading">
           <div className="border-b border-line px-5 py-4 bg-canvas/40 flex flex-wrap gap-3 items-center justify-between">
             <div>
@@ -172,7 +174,7 @@ export function StudentDashboard() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" role="region" aria-label="Recent attempts table" tabIndex={0}>
               <table className="min-w-full text-left text-sm">
                 <caption className="sr-only">Your five most recent experiment attempts</caption>
                 <thead className="bg-canvas border-b border-line text-muted text-xs uppercase tracking-wider">
@@ -211,7 +213,7 @@ function ProgressStat({
 }) {
   return (
     <div
-      className="panel p-5 border border-line bg-surface shadow-xs flex items-center gap-3.5"
+      className="panel p-5 border border-line bg-surface shadow-xs flex flex-wrap items-center gap-3.5 min-w-0"
       data-testid={`stat-${label.toLowerCase().replaceAll(' ', '-')}`}
     >
       <div className="p-3 rounded-lg bg-brand/10 text-brand shrink-0">
@@ -245,25 +247,13 @@ function AttemptRow({ attempt }: { attempt: RecentAttempt }) {
         </span>
       </td>
       <td className="px-5 py-3.5 font-bold text-ink">
-        {attempt.score === null ? '—' : `${attempt.score}/100`}
+        {scoreText(attempt.status, attempt.score, attempt.assessmentScore)}
       </td>
       <td className="px-5 py-3.5 text-xs text-muted">
         {dateTime(attempt.completedAt ?? attempt.startedAt)}
       </td>
       <td className="px-5 py-3.5 text-right">
-        {attempt.reportAvailable && attempt.reportId ? (
-          <a
-            className="inline-flex items-center gap-1 font-semibold text-xs text-brand hover:text-brand-dark transition-colors bg-brand/5 border border-brand/20 px-2.5 py-1 rounded"
-            href={`${api.defaults.baseURL}/reports/${attempt.reportId}/download`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <FileText size={13} />
-            <span>Report</span>
-          </a>
-        ) : (
-          <span className="text-muted text-xs">—</span>
-        )}
+        <ReportLink attempt={attempt} />
       </td>
     </tr>
   );

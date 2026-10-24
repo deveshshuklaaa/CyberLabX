@@ -12,8 +12,8 @@ beforeEach(() => {
   vi.clearAllMocks(); started = false; verified = false; completed = false;
   useSessionStore.setState({ loaded: true, user: { id: 'integration-student', firstName: 'Integration', lastName: 'Student', email: 'integration@example.test', role: 'student', isActive: true } });
   vi.mocked(api.get).mockImplementation(async path => {
-    if (path === '/student/dashboard') return { data: { stats: { totalExperiments: 1, experimentsAttempted: started ? 1 : 0, experimentsCompleted: completed ? 1 : 0, averageScore: completed ? 100 : 0, bestScore: completed ? 100 : 0 }, recentAttempts: [] } };
-    if (path === '/student/history') return { data: { attempts: completed ? [{ attemptId: 'a1', experimentId: 'e1', experimentTitle: experiment.title, status: 'completed', score: 100, startedAt: '2026-01-01T10:00:00Z', completedAt: '2026-01-01T11:00:00Z', reportAvailable: true, reportId: 'r1' }] : [] } };
+    if (path === '/student/dashboard') return { data: { stats: { totalExperiments: 1, experimentsAttempted: started ? 1 : 0, experimentsCompleted: completed ? 1 : 0, publishedExperimentsCompleted: completed ? 1 : 0, averageScore: completed ? 100 : 0, bestScore: completed ? 100 : 0 }, recentAttempts: [] } };
+    if (path === '/student/history') return { data: { attempts: completed ? [{ attemptId: 'a1', experimentId: 'e1', experimentTitle: experiment.title, status: 'completed', score: 100, assessmentScore: { value: 100, max: 100, percentage: 100, basis: 'report' }, startedAt: '2026-01-01T10:00:00Z', completedAt: '2026-01-01T11:00:00Z', reportAvailable: true, reportId: 'r1' }] : [] } };
     if (path === '/experiments') return { data: { experiments: [experiment] } };
     if (path === '/experiments/e1') return { data: { experiment } };
     if (path === '/labs/l1') return { data: { labSession: { id: 'l1', attemptId: 'a1', status: completed ? 'stopped' : 'running', backend: 'docker', expiresAt: '2030-01-01T10:00:00Z' } } };
@@ -46,11 +46,11 @@ describe('Frontend delivery integration', () => {
     fireEvent.click(screen.getByRole('button', { name: /Submit Practical/ }));
     expect(await screen.findByTestId('final-score')).toHaveTextContent('100');
     fireEvent.click(screen.getByRole('link', { name: 'View attempt history' }));
-    expect(await screen.findByText('100/100')).toBeInTheDocument();
+    expect(await screen.findByText('100 / 100 (100%)')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Download report for/ })).toHaveAttribute('href', 'http://localhost:5000/api/reports/r1/download');
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: 'My Progress' }));
     expect(await screen.findByText('1 completed / 1 published experiments')).toBeInTheDocument();
-    expect(screen.getByText('100/100')).toBeInTheDocument();
+    expect(screen.getByText('100 / 100 (100%)')).toBeInTheDocument();
     fireEvent.click(within(screen.getByRole('navigation', { name: 'Main navigation' })).getByRole('link', { name: 'Dashboard' }));
     expect(await screen.findByText('1 / 1')).toBeInTheDocument();
     expect(errors).not.toHaveBeenCalled();
@@ -58,7 +58,7 @@ describe('Frontend delivery integration', () => {
   });
   it('restores saved completion after a direct visit instead of offering quiz resubmission', async () => {
     started = verified = completed = true; open('/labs/l1');
-    expect(await screen.findByRole('region', { name: 'Saved completion' })).toHaveTextContent('Saved total score: 100');
+    expect(await screen.findByRole('region', { name: 'Saved completion' })).toHaveTextContent('Saved total score (points): 100');
     expect(screen.queryByRole('button', { name: /Submit Practical/ })).not.toBeInTheDocument();
     expect(screen.queryByLabelText('Transport test boundary')).not.toBeInTheDocument();
   });

@@ -60,7 +60,7 @@ function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
   const attemptQuery = useQuery({
     queryKey: ['attempt', attemptId],
     enabled: Boolean(attemptId),
-    queryFn: () => api.get<{ attempt: { experiment: Experiment; currentTaskIndex: number; status?: string; score?: number } }>(`/attempts/${attemptId}`).then(r => r.data.attempt),
+    queryFn: () => api.get<{ attempt: { experiment: Experiment; currentTaskIndex: number; status?: string; score?: number; verifiedTaskIds?: string[] } }>(`/attempts/${attemptId}`).then(r => r.data.attempt),
   });
 
   const attempt = attemptQuery.data;
@@ -106,7 +106,7 @@ function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
       setNotice(data.result.passed ? 'Task verified. Progress saved.' : 'Task not yet verified. Review the feedback and try again.');
       if (data.result.passed) {
         setIndex(data.currentTaskIndex);
-        queryClient.setQueryData(['attempt', attemptId], { ...attempt, currentTaskIndex: data.currentTaskIndex });
+        queryClient.setQueryData(['attempt', attemptId], { ...attempt, currentTaskIndex: data.currentTaskIndex, verifiedTaskIds: [...new Set([...(attempt?.verifiedTaskIds ?? []), task.id])] });
         void queryClient.invalidateQueries({ queryKey: ['student-dashboard'] });
         void queryClient.invalidateQueries({ queryKey: ['student-history'] });
         setCommand('');
@@ -207,16 +207,16 @@ function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
             <div className="border-b border-line pb-3 mb-4 flex items-center justify-between">
               <div>
                 <h2 className="text-sm font-bold uppercase tracking-wider text-ink">Guided Practical Tasks</h2>
-                <p className="text-[11px] text-muted">Complete tasks sequentially for verification</p>
+                <p className="text-[11px] text-muted">Instruction sequence; verification comes from saved task results</p>
               </div>
               <span className="text-xs font-bold text-brand bg-brand/5 px-2 py-0.5 rounded border border-brand/20">
-                {Math.min(index, experiment.tasks.length)} / {experiment.tasks.length}
+                Step {Math.min(index + 1, experiment.tasks.length)} of {experiment.tasks.length}
               </span>
             </div>
 
             <div className="space-y-3">
               {experiment.tasks.map((item, itemIndex) => {
-                const isPassed = itemIndex < index;
+                const isPassed = attempt?.verifiedTaskIds?.includes(item.id) ?? false;
                 const isCurrent = itemIndex === index;
 
                 return (
@@ -344,7 +344,7 @@ function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
       {/* ── Section: Knowledge Check Quiz ────────────────────────────────────────── */}
       {index >= experiment.tasks.length && !completion && active && attemptQuery.isSuccess && (
         <section className="panel p-6 sm:p-8 bg-surface border border-line shadow-xs space-y-6">
-          <div className="border-b border-line pb-4 flex items-center justify-between">
+          <div className="border-b border-line pb-4 flex flex-wrap gap-3 items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="p-2 rounded bg-brand/10 text-brand">
                 <ClipboardCheck size={20} />
@@ -416,7 +416,7 @@ function WorkspaceSession({ labSessionId }: { labSessionId: string }) {
       )}
 
       {/* ── Section: Completion Panel ────────────────────────────────────── */}
-      {attempt?.status === 'completed' && !completion && <section className="panel p-5 space-y-3" aria-label="Saved completion"><h2 className="text-lg font-bold">Attempt completed</h2><p>Saved total score: {attempt.score ?? 'Unavailable'}</p><p className="text-sm text-muted">Your completed attempt is saved. Open history to check report availability.</p><Link className="button-secondary" to="/history">View attempt history</Link></section>}
+      {attempt?.status === 'completed' && !completion && <section className="panel p-5 space-y-3" aria-label="Saved completion"><h2 className="text-lg font-bold">Attempt completed</h2><p>Saved total score (points): {attempt.score ?? 'Unavailable'}</p><p className="text-sm text-muted">Your completed attempt is saved. Open history to check report availability.</p><Link className="button-secondary" to="/history">View attempt history</Link></section>}
       {completion && <section className="panel p-5 space-y-3" aria-label="Quiz feedback"><h2 className="text-lg font-bold">Assessment feedback</h2>{quizFeedback.map(answer => <div key={answer.questionId} className="border-b border-line pb-3"><p className="font-semibold">{experiment.quiz.questions.find(question => question.id === answer.questionId)?.question}</p><p className="text-sm">{answer.correct ? 'Correct' : 'Incorrect'}: {answer.explanation}</p></div>)}<Link className="button-secondary" to="/history">View attempt history</Link></section>}
       {completion && (
         <CompletionPanel

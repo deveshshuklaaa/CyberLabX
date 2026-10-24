@@ -21,7 +21,7 @@ const experiments = [
   { _id: 'e2', title: 'Forensics', slug: 'forensics', description: 'Investigate evidence.', difficulty: 'Beginner', estimatedTimeMinutes: 30, taskCount: 2 },
   { _id: 'e3', title: 'New practical', slug: 'new', description: 'A published practical.', difficulty: 'Beginner', estimatedTimeMinutes: 30, taskCount: 2 },
 ];
-const dashboard = { stats: { totalExperiments: 3, experimentsAttempted: 3, experimentsCompleted: 1, averageScore: 90, bestScore: 90 }, recentAttempts: [] };
+const dashboard = { stats: { totalExperiments: 3, experimentsAttempted: 3, experimentsCompleted: 1, publishedExperimentsCompleted: 1, averageScore: 90, bestScore: 90 }, recentAttempts: [] };
 function dataFor(path: string) { return path === '/student/enrollment' ? { enrollment: null } : path === '/student/history' ? { attempts } : path === '/student/dashboard' ? dashboard : { experiments }; }
 function setup(path = '/progress') {
   const query = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
@@ -40,13 +40,13 @@ describe('Student progress', () => {
     const section = await screen.findByRole('region', { name: 'Experiment-wise progress' });
     await within(section).findByText('Not started', { selector: 'span' });
     const cards = within(section).getAllByRole('article');
-    expect(within(cards[0]).getByText('90/100')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('90 points \u00b7 maximum unknown')).toBeInTheDocument();
     expect(within(cards[0]).getByText('Completed')).toBeInTheDocument();
     expect(within(cards[0]).getByText('2')).toBeInTheDocument();
     expect(within(cards[1]).getByText('In progress')).toBeInTheDocument();
     expect(within(cards[2]).getByText('Not started', { selector: 'span' })).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Curriculum completion' })).toHaveAttribute('value', '33');
-    expect(screen.getAllByText('90%')).toHaveLength(2);
+    expect(screen.getAllByText('90 points')).toHaveLength(2);
     expect(within(cards[0]).getByRole('link')).toHaveAttribute('href', '/experiments/e1');
   });
   it('does not claim experiments are unstarted when history fails and allows retry', async () => {
@@ -66,7 +66,7 @@ describe('Student progress', () => {
   it('shares the same cached response shape when navigating from history to progress and back', async () => {
     setup('/history'); await screen.findByText('4 of 4 attempts');
     fireEvent.click(screen.getByRole('link', { name: 'Progress route' }));
-    expect(await screen.findByText('90/100')).toBeInTheDocument();
+    expect(await screen.findByText('90 points \u00b7 maximum unknown')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('link', { name: 'History route' }));
     expect(await screen.findByText('4 of 4 attempts')).toBeInTheDocument();
     expect(vi.mocked(api.get).mock.calls.filter(([path]) => path === '/student/history')).toHaveLength(1);
@@ -76,7 +76,7 @@ describe('Student history', () => {
   it('shows dates, preserves zero scores and links only genuinely available reports', async () => {
     setup('/history'); await screen.findByText('4 of 4 attempts');
     const records = within(screen.getByRole('region', { name: 'Recorded attempts' }));
-    expect(records.getByText('0/100')).toBeInTheDocument();
+    expect(records.getByText('0 points \u00b7 maximum unknown')).toBeInTheDocument();
     expect(records.getAllByText('Not graded')).toHaveLength(2);
     const reports = records.getAllByRole('link', { name: /Download report/ });
     expect(reports).toHaveLength(1); expect(reports[0]).toHaveAttribute('href', 'http://localhost:5000/api/reports/r1/download');

@@ -1,5 +1,9 @@
 # CyberLabX Google authentication — setup and review
 
+> Current local setup instructions are in
+> [GOOGLE_OAUTH_LOCAL_SETUP.md](GOOGLE_OAUTH_LOCAL_SETUP.md). This document
+> preserves the original implementation review and its historical test counts.
+
 Implemented on `codex/real-kali-nmap-integration`, 24 October 2026.
 Status: **automated verification passed; real Google OAuth not tested**.
 No Google client ID, client secret or callback URL is configured in the local

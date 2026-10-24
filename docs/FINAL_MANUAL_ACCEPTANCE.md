@@ -62,6 +62,21 @@ instance or resolve the conflict; do not silently change the configured origin.
 
 ## 2. Accounts and test hygiene
 
+Public Student registration is now available at **http://localhost:5173/register**.
+From `/login`, choose **Create Account**, enter first/last name, an email address,
+and a 12–128 character password twice. The successful MongoDB write creates an
+active `student`, starts the existing HttpOnly-cookie session, and opens
+`/student` with a success notice. Refresh once, sign out, and sign in again with
+the same email/password. Password registration does not verify control of the
+email address because the project has no email-delivery/verification service.
+It never offers Faculty/Admin role selection.
+
+The **Continue with Google** button starts the real backend OAuth flow. When the
+three Google settings are absent it returns to `/login?oauth_error=not_configured`
+with a useful message. Complete [the local Google setup guide](GOOGLE_OAUTH_LOCAL_SETUP.md)
+before expecting a Google account-selection page. Do not treat the current
+unconfigured response or mocked tests as provider acceptance.
+
 Retrieve these existing development accounts from local `.env` privately:
 
 | Account | Environment key prefix | Purpose |
@@ -88,6 +103,8 @@ only the relationship, not the student or academic records.
 
 1. Open `/login`; Tab through labeled email/password fields. Sign in as the
    dedicated student. Expect `/student`, a personalized welcome and real totals.
+   For a fresh account, first choose **Create Account**, confirm inline validation
+   and the password visibility control, then expect immediate Student access.
 2. Refresh. Expect the session to persist via `/api/auth/me`, without entering
    another password. Student access to `/admin` or `/teacher` must redirect to
    the authorized landing page; direct privileged API access must return 403.

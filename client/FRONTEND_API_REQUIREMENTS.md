@@ -1,15 +1,36 @@
 # Frontend API requirements: teacher monitoring
 
-## Stage 4B contract review (proposed, not implemented)
+## Stage 5 implementation status (local takeover)
+
+Teacher academic monitoring is now connected on `/teacher` and `/faculty`:
+
+- `GET /api/teacher/students/:studentId/attempts`: owned student history,
+  status/exact experiment/date filters and server pagination.
+- `GET /api/teacher/students/:studentId/reports`: owned report metadata and
+  genuine PDF availability, exact experiment/date filters and pagination.
+- `GET /api/teacher/students/:studentId/reports/:reportId/download`: separately
+  authorized PDF download; no teacher report generation.
+- `GET /api/teacher/analytics/experiments`: current-cohort and experiment
+  participation/completion, recorded points, known-max normalized scores and
+  pagination. Exact `/api/faculty` aliases are provided.
+
+These routes require the stored `faculty` role; admin does not impersonate a
+teacher. Existing student-only attempt/report routes remain student-only.
+See [Stage 5 delivery and exact implemented semantics](../docs/STAGE5_TEACHER_MONITORING.md)
+for ownership, score denominators, real API/browser validation and limitations.
+Immutable task/assessment snapshots are still absent: historical required-task
+totals and percentages remain unknown; valid persisted reports supply score maxima.
+
+## Stage 4B review: remaining proposals
 
 The exact remaining API proposal and implementation gates are in
 [STAGE4B_API_IMPLEMENTATION_PLAN.md](../docs/STAGE4B_API_IMPLEMENTATION_PLAN.md).
 It supersedes the open-ended future requirements below where it defines a
 specific proposal. Stage 4A enrollment is already implemented and must not be
-rebuilt. No new privileged endpoint is enabled by this review.
+rebuilt. The Stage 5 teacher reads above are implemented under the Stage 5 request;
+the other proposals remain unimplemented and require separate approval.
 
-Necessary proposals: teacher-scoped student attempts/reports/downloads,
-per-experiment cohort analytics, admin user directory/lookup, safe hardening of
+Remaining necessary proposals: admin user directory/lookup, safe hardening of
 the existing account PATCH, paginated audit filtering, category projection and
 truthful additive score/progress fields on existing student reads. Student-only
 attempt/report APIs stay student-only; admin teacher enrollment keeps explicit
@@ -25,7 +46,7 @@ normalized scores: the current backend records raw points, including 75-point
 experiments. Historical maxima must come from persisted reports or approved
 attempt snapshots, not today's mutable experiment definition.
 
-## Verified Stage 5 integration
+## Verified faculty overview contract
 
 `GET /api/faculty/dashboard` is used by the frontend. The backend also exposes
 `GET /api/teacher/dashboard` as an alias. Both require an authenticated `faculty`
@@ -69,19 +90,21 @@ return focus to refetch; no cross-browser push synchronization is assumed.
 
 Admins viewing Teacher Portal never call faculty-only enrollment routes. Explicit
 teacher selection and the admin teacher-scoped management UI remain deferred.
-General admin user/teacher directories,
-individual teacher attempt/report access, per-experiment analytics and experiment
-CRUD remain missing. Lists accept page/limit only; no fuzzy search or class model
+General admin user/teacher directories and experiment CRUD remain missing.
+Individual teacher attempt/report access and experiment analytics are now implemented
+as listed above. Enrollment lists accept page/limit only; the new academic reads
+also support their documented exact filters. No fuzzy search or class model
 is provided. Enrollment progress averages completed attempts, not best-per-experiment
 scores. Do not substitute student-only history/report routes.
 
 The original requirements below describe broader future functionality and are
 partially satisfied by this contract; unsupported portions remain proposals.
 
-## Contracts to agree before enabling features
+## Historical requirements and remaining extensions
 
-The following are requirements, not implemented routes or agreed endpoint names.
-Backend owners must define paths, request/response schemas and authorization.
+The following is the original broader requirements inventory. Stage 4A enrollment
+and Stage 5 teacher reads satisfy their respective portions; additional search,
+class/invitation, snapshot and admin capabilities remain proposals.
 Use existing cookie authentication; teacher UI cannot grant itself access.
 
 ### Student listing
@@ -207,8 +230,11 @@ The current client-side filters apply only to the fetched snapshot.
 Implemented API consumers are the student dashboard/history, published catalogue
 and detail, existing lab/task/quiz/report flows, faculty/admin aggregates and admin
 account creation, faculty enrollment/list/detail/removal and student own enrollment.
+Stage 5 adds teacher student-history/report metadata/PDF reads and cohort experiment
+analytics through the faculty-only endpoints listed at the top of this document.
 PATCH user updates remain unexposed without reliable target
 selection. All requirements above are pending unless listed as a verified existing
 route; proposed contract descriptions do not imply server implementations.
 See `FRONTEND_DELIVERY_REVIEW.md` for test evidence and environment limitations.
 See `../docs/STAGE4A_ENROLLMENT_UI.md` for current local enrollment acceptance.
+See `../docs/STAGE5_TEACHER_MONITORING.md` for teacher academic monitoring acceptance.

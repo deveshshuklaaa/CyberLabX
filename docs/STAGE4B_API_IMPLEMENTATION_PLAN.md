@@ -2,7 +2,11 @@
 
 Review date: 2026-10-24. Branch: `integration/local-takeover`.
 Reviewed HEAD: `d9ed56e306c6082222b3435f5524fa2fd0f95e0a`.
-**Design proposal for review, not implemented or approved endpoint behavior.**
+**Historical Stage 4B design proposal; see the subsequent delivery status below.**
+Historical Stage 4B status: the subsequent Stage 5 request authorized teacher
+contracts T1/T2/T3/A1. Those reads are now implemented and verified locally; see
+[STAGE5_TEACHER_MONITORING.md](STAGE5_TEACHER_MONITORING.md) for the delivered
+semantics and evidence. All other proposals below retain their review gates.
 Stage 4A enrollment remains complete and unchanged. No application, schema,
 database, infrastructure, authentication or remote changes are made in Stage 4B.
 

@@ -1,6 +1,7 @@
-# Checkpoints 3 and 3B: Live enrollment and rendered browser verification
+# Checkpoint 3 acceptance: live integration, browser and final regression
 
 Assessment date: 2026-10-24. Branch: `integration/local-takeover`.
+Checkpoint 3C starting HEAD: `5875b6faa27e0f8112ea8fe582c80a0ee9db22dc`.
 Checkpoint 3B starting HEAD: `a4875de26c59e977c6fd8e716c424d194d4295a8`.
 Application source is unchanged from `d25208514f7a7c1d8317bfad2bae60e3ff65a2f2`.
 The final documentation commit can be identified with
@@ -15,11 +16,16 @@ and ten concurrent enrollment rounds passed. The original live harness recorded 
 HTTP statuses with zero unexpected statuses; an additional authenticated admin
 dashboard read also returned 200. No application defect or source correction was
 required. Checkpoint 3B added nine missing real rounds and rendered acceptance in
-installed Chrome. The tested page/state matrix passed; terminal runtime,
-nonempty academic history, and other limits below remain unverified.
+installed Chrome. Checkpoint 3C then verified nonempty academic-history
+preservation using one genuine completed Nmap attempt and generated PDF, and
+freshly ran all six regression commands. The ten concurrency rounds and browser
+matrix were **not repeated** in 3C. Remaining limits are listed at the end.
 
-No enrollment UI, new API, security change, lab execution, Docker/Kali validation,
-deployment, push, remote branch modification, or PR operation was performed.
+No enrollment UI, new API, security change, infrastructure change, deployment,
+push, remote branch modification, or PR operation was performed. Checkpoints 3
+and 3B did not execute labs. In 3C a controlled existing local Docker/Nmap workflow
+created valid academic history; this was not a new lab implementation or a broad
+runtime acceptance exercise.
 
 ## Services and isolation
 
@@ -52,7 +58,7 @@ history was therefore not exercised; no fabricated history was inserted.
 
 Test relationships were removed through authorized DELETE endpoints. The two
 new accounts remain intentionally: there is no account-deletion flow used here.
-Final inventory is five users, two active students, eight experiments (seven
+Checkpoint 3B inventory was five users, two active students, eight experiments (seven
 published), zero lab sessions, and two real user-creation audit events. The test
 student remains active and unassigned, with no `teacherId` or `enrolledAt`.
 
@@ -328,15 +334,23 @@ the available fallback work; meaningful multi-category filtering needs the
 existing list contract to supply category. This is a recorded dependency, not an
 API change made in this checkpoint.
 
-The isolated database has no attempts/reports for the dedicated student. Creating
-nonempty academic history would require labs or unsupported inserted fixtures;
-neither was done. Nonempty-history preservation and nonzero score/report metric
-isolation remain unverified. No actual terminal was mounted: terminal width,
+At Checkpoint 3B the isolated database had no attempts/reports for the dedicated
+student. Creating nonempty academic history would have required labs or
+unsupported inserted fixtures; neither was done in 3B. Nonempty-history
+preservation and nonzero score/report metric isolation were then unverified.
+No actual terminal was mounted in that browser pass: terminal width,
 input/output, resize, reconnect, Socket.IO, grading and report download remain
 pending a separately authorized real lab session. The nonexistent-lab error
-matrix must not be counted as terminal or Kali validation.
+matrix must not be counted as terminal or Kali validation. These are the
+limitations recorded at 3B: the 3C section below supersedes the nonempty-history
+and basic real Socket.IO command/report-download gaps only. Browser terminal
+rendering, resize and reconnection remain untested.
 
 For a headed Chrome/Edge manual follow-up:
+
+The following optional checklist originated in 3B. Its zero-history expectations
+still apply to the untouched seed student. For the dedicated test student after
+3C, expect one completed attempt/report instead; platform attempt count is now 1.
 
 1. Open `http://localhost:5173/login`, use local credentials privately, and repeat
    the exact role URLs in the matrix. In DevTools responsive mode set widths
@@ -361,30 +375,193 @@ For a headed Chrome/Edge manual follow-up:
    authorized harmless lab command, resize, test reconnect and use existing stop
    functionality. Until then mark all terminal/runtime/report checks pending.
 
-## Tests, changed files, and handoff
+## Checkpoint 3C: nonempty academic-history preservation
 
-No application source changed, so full unit tests/build/lint were not repeated
-for documentation-only Checkpoint 3 or 3B. The previous verified baseline in
-`docs/LOCAL_RUNTIME_STAGE2.md` remains:
+### Fixture assessment and supported creation
 
-- Server: 262 tests in 33 files passed; production build passed.
-- Client: 147 tests in 14 files passed; production build and lint passed.
-- Server lint: three existing unused-symbol findings (`NMAP_LAB_DEFINITION`,
-  `DOS_LAB_DEFINITION`, and `_next`); not new checkpoint failures.
-- Existing client bundle-size advisory and dependency audit findings remain;
-  no dependency upgrades were attempted.
+Read-only inspection confirmed both development students initially had zero
+attempts and reports. The seeded student was left untouched. The existing
+dedicated test student `6adc9fa6ee7bf58417c1675a` was active and unassigned.
+The checked-in seeder supplies users/experiments, not academic history; enrollment
+and completion unit-test fixtures mock MongoDB and are not live history evidence.
 
-Tracked change: this report only; `git diff --check` passed. Ignored local
-artifacts include the three Checkpoint 3B validation scripts under `server/`,
-sanitized results and browser screenshots. Existing `.env` test credentials were
-reused in 3B. The two test accounts and their creation audit events from
-Checkpoint 3 remain intentional; 3B added no accounts or academic records. Every
-test enrollment was removed through an authorized API. No secrets, database
-files, generated reports, runtime scripts or logs are staged.
+The configured `LAB_BACKEND=docker` and both required images
+`cyberlabx-kali:latest` / `cyberlabx-target:latest` were already available locally.
+No image pull/build, package upgrade, VM setup, infrastructure or security change
+was required. The existing controlled application workflow was therefore usable:
 
-The running stack passed the scoped real-service/browser acceptance checks.
-Remaining evidence gaps are listed above; no application defect fix was needed.
-Services remain running. Avoid repeated login loops: the existing ten-per-15-minute
-login rate limiter may reject further immediate attempts; it was not disabled
-or weakened. No remote operation occurred. Stop after Checkpoint 3B, before
-enrollment UI, new API development, practical-runtime validation or deployment.
+| Real action | Result |
+| --- | --- |
+| Student POST `/api/auth/login` | 200 |
+| GET `/api/experiments` and returned Nmap detail | 200 each |
+| POST `/api/labs/start` | 201; real running Docker lab |
+| Authenticated Socket.IO connection and `terminal:join` | Real terminal ready; original cookie/origin authorization retained |
+| Host discovery task POST `/api/tasks/live-host/submit` | 200, passed, 10 marks |
+| SYN task POST `/api/tasks/syn-scan/submit` | 200, passed, 15 marks |
+| OS task POST `/api/tasks/os-detection/submit` | 200, passed, 15 marks |
+| Service task POST `/api/tasks/service-detection/submit` | 200, passed, 20 marks |
+| POST `/api/quizzes/:experimentId/submit` | 200; completed attempt, recorded total score 75, real report generated |
+| GET `/api/reports/:reportId/download` | 200; 1,918 bytes beginning with `%PDF-` |
+| POST `/api/labs/:labSessionId/stop` after completion | 204; session stopped |
+
+Commands went through the existing Socket.IO terminal bridge, never direct
+database writes or fabricated command evidence. Each real scan completed and
+reported a reachable host; server-created command logs contained its output
+before task verification. Targets were restricted to the lab's private
+`nmap-target`, with bounded port/time settings where applicable:
+
+```text
+nmap -sn nmap-target
+nmap -sS -p 80 --max-retries 1 --host-timeout 20s nmap-target
+nmap -O -p 80 --max-retries 1 --host-timeout 25s nmap-target
+nmap -sV -p 80 --version-light --max-retries 1 --host-timeout 25s nmap-target
+```
+
+The quiz used the existing submission contract and options from the actual
+experiment; no grade, completion index, attempt or report was inserted manually.
+This proves one genuine Docker-backed academic-history workflow, not OS-detection
+accuracy, every experiment, browser xterm rendering, VM/QEMU, reconnect or resize.
+
+### Non-sensitive identities and before/after evidence
+
+| Record | Identifier |
+| --- | --- |
+| Dedicated student | `6adc9fa6ee7bf58417c1675a` |
+| Faculty A | `6adc9cf2ed9b029f30c28bb0` |
+| Faculty B | `6adc9fa5ee7bf58417c16754` |
+| Completed attempt | `6adca585ee7bf58417c16a13` |
+| Report | `6adca597d794932ab5c57736` |
+| Stopped lab session | `6adca585ee7bf58417c16a15` |
+
+The completed attempt/report existed **before** either preservation-test
+enrollment. The complete academic documents and PDF byte hashes were compared
+after every transition, rather than comparing only counts.
+
+| State | Active account | Teacher / enrollment timestamp | Attempts | Reports | Academic documents / PDF |
+| --- | --- | --- | ---: | ---: | --- |
+| Before enrollment | Yes | Both fields absent | 1 | 1 | Preservation baseline captured |
+| A enrolled | Yes | A / `2026-10-24T12:33:28.124Z` | 1 | 1 | Identical to baseline |
+| A removed | Yes | Both fields absent | 1 | 1 | Identical to baseline |
+| B enrolled after release | Yes | B / `2026-10-24T12:33:28.201Z` | 1 | 1 | Identical to baseline |
+| B removed / final cleanup | Yes | Both fields absent | 1 | 1 | Identical to baseline |
+
+Attempt/report IDs in every row were exactly the IDs above. PDF SHA-256 before
+and after every transition:
+`c19669e84c35e33a4b73c443e21ed36c027d4e0b9cb677388622ba8f278e8fa9`.
+Student identity/account fields, including password hash, Google ID, avatar,
+role, active status and creation time, were compared privately and unchanged.
+This student has password authentication and no linked Google ID; unchanged
+absence was verified, not a real Google OAuth flow or linked-account test.
+No identity secret or password hash is printed in evidence.
+
+### Ownership and removal HTTP evidence
+
+Both faculty logins returned 200, in separate real authenticated sessions.
+These are the new nonempty-history checks, not repeated concurrency rounds:
+
+| Actor / action | Method and route | Actual status |
+| --- | --- | ---: |
+| A enrolls history-bearing student | POST `/api/teacher/students` | 201 |
+| B reads A-owned relationship | GET `/api/teacher/students/:studentId` | 404 |
+| B attempts takeover before release | POST `/api/teacher/students` | 409 |
+| A releases student | DELETE `/api/teacher/students/:studentId` | 204 |
+| A reads after losing relationship | GET `/api/teacher/students/:studentId` | 404 |
+| B enrolls only after release | POST `/api/teacher/students` | 201 |
+| A reads B-owned relationship | GET `/api/teacher/students/:studentId` | 404 |
+| B removes test relationship | DELETE `/api/teacher/students/:studentId` | 204 |
+
+MongoDB confirmed the expected owner after each successful POST. Both optional
+fields were absent after each removal. All 20 workflow/preservation assertions
+passed. The harness recorded 23 expected HTTP statuses plus the successful
+binary report-download response. All three sessions logged out with 204.
+
+### Database preservation and cleanup
+
+All 15 pre-existing documents were snapshotted and compared after this workflow.
+Fourteen were byte-equivalent after JSON serialization; the dedicated student's
+only allowed change was its normal `updatedAt`. Its identity fields remained
+identical. The seed student, other accounts, experiments and two existing audit
+events were unchanged. Neither database collections nor Docker volumes were
+reset, and no academic record was removed.
+
+Final database inventory: five users, eight experiments, two existing audit
+events, **one completed attempt, one report, one stopped lab session, and four
+real terminal command logs**. The dedicated student remains active and
+unassigned. These seven new, internally consistent workflow records and the PDF
+are intentionally retained as development history for demo/future acceptance.
+The existing API has no academic-record deletion flow; direct deletion merely
+to restore empty counts would remove useful validated evidence. No additional
+account was created. Existing Faculty B/test-student development accounts remain.
+
+Normal application completion/stop removed the test containers and internal
+network. Docker queries filtered by this exact attempt label returned no
+remaining container/network. The dedicated MongoDB container remains healthy.
+The reaper and unrelated Docker resources were not altered.
+
+Ignored local evidence: `.env.checkpoint3c-inspection.json` (initial record
+fingerprints/counts), `.env.checkpoint3c-history-results.json` (statuses,
+non-sensitive IDs, preservation results), and the two `.env.checkpoint3c*.mjs`
+validation scripts under `server/`. The generated PDF is in ignored
+`server/reports/cyberlabx-report-6adca585ee7bf58417c16a13.pdf`.
+
+## Checkpoint 3C: mandatory fresh regression
+
+All six requested commands were newly executed against unchanged application
+source on 2026-10-24. These are actual 3C results, not reused baseline claims.
+
+| Command | Exit code | Fresh outcome |
+| --- | ---: | --- |
+| `npm --prefix server test` | 0 | **262 passed**, 33 test files passed, zero failures; Vitest 3.2.7 |
+| `npm --prefix client test` | 0 | **147 passed**, 14 test files passed, zero failures; Vitest 3.2.7 |
+| `npm --prefix server run build` | 0 | TypeScript production build passed |
+| `npm --prefix client run build` | 0 | TypeScript/Vite production build passed; Vite 6.4.3, 1,766 modules |
+| `npm --prefix server run lint` | **1** | **Failed: exactly three pre-existing errors**, no new lint finding |
+| `npm --prefix client run lint` | 0 | Passed with `--max-warnings=0` |
+
+Known server lint failures, reported without suppression or code changes:
+
+- `server/src/__tests__/allExperiments.test.ts:9:3`:
+  `NMAP_LAB_DEFINITION` defined but unused, `@typescript-eslint/no-unused-vars`.
+- `server/src/__tests__/allExperiments.test.ts:10:3`:
+  `DOS_LAB_DEFINITION` defined but unused, same rule.
+- `server/src/middleware/error.ts:3:67`: `_next` defined but unused, same rule.
+
+Server tests emitted expected diagnostics for mocked Docker-unavailable,
+cleanup-retry, PDF-failure and VM-monitor-failure paths; the associated tests
+passed. Those messages are not new live runtime failures. These regression
+suites remain distinct from the real MongoDB/Socket.IO workflow above.
+
+Client build retains its existing >500 kB chunk advisory: JavaScript 768.84 kB /
+218.14 kB gzip; CSS 35.38 kB / 7.61 kB gzip. No warning threshold, test, security
+rule, dependency or application file was changed. Dependency audit findings
+were not rescanned or repaired in this stage.
+
+## Final acceptance classification and local handoff
+
+| Classification | Evidence / remaining scope |
+| --- | --- |
+| **Passed** | Ten real competing enrollment rounds, documented individually above; not repeated in 3C |
+| **Passed** | 3B rendered browser matrix: 44 combinations, 49 screenshots in the recorded ignored directory; not repeated in 3C |
+| **Passed** | Real nonempty attempt/report/PDF preservation, unchanged identity, ownership restrictions, authorized removal and reassignment |
+| **Passed** | Fresh 262 server / 147 client tests, both builds and client lint |
+| **Failed (known baseline)** | Server lint: the three exact existing unused-symbol errors above |
+| **Blocked** | No requested history/regression check was blocked. Meaningful category filtering has a later API/UI dependency because the list response omits category; no fix attempted |
+| **Not tested** | Headed Edge/Chrome, real touch hardware, screen-reader/full keyboard audit, populated-history browser rendering after 3C |
+| **Not tested** | Browser xterm containment, resize/reconnection, QEMU/Kali VM, other experiment runtime flows and broad lab security/runtime acceptance |
+| **Not tested** | Linked Google account flow and nonzero faculty-score/report metric isolation (the new fixture now enables later checks) |
+
+No blocker remains for the requested nonempty-history preservation test. The
+known server lint failure prevents an all-green six-command result; no new
+application regression was found. Existing category behavior remains documented
+for later work and was not changed here.
+
+Tracked change: this report only. `git diff --check` passed; the local commit
+contains no application/backend/infrastructure changes, generated reports,
+runtime scripts, logs, secrets or database files. The tracked worktree is clean
+after the documentation commit; ignored runtime/evidence files remain local.
+Branch is `integration/local-takeover`; starting HEAD is recorded at the top and
+the resulting documentation commit SHA is supplied in the completion report.
+
+Services remain running; no GitHub push, PR action, remote branch change or
+deployment occurred. Stop after Checkpoint 3C for review before teacher enrollment
+UI integration or additional API development.

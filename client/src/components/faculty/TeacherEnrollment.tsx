@@ -6,6 +6,7 @@ import { useSessionStore } from '../../store/sessionStore';
 import { LoadingState, ErrorState } from '../common/QueryState';
 import { enrollmentDate, enrollmentError, enrollmentKeys, enrollmentPageSize, useEnrolledStudent, useEnrolledStudents, useRefreshEnrollments } from '../../services/enrollment';
 import type { EnrolledStudent, EnrollmentSelector } from '../../services/enrollment';
+import { StudentAcademics } from './StudentAcademics';
 
 export function TeacherEnrollment() {
   const user = useSessionStore(state => state.user);
@@ -81,6 +82,8 @@ function StudentDetail({ teacherId, studentId, onClose, onRemoved }: { teacherId
     onRemoved();
     await client.cancelQueries({ queryKey: enrollmentKeys.detail(teacherId, studentId) });
     client.removeQueries({ queryKey: enrollmentKeys.detail(teacherId, studentId) });
+    await client.cancelQueries({ queryKey: ['teacher-academics', teacherId, studentId] });
+    client.removeQueries({ queryKey: ['teacher-academics', teacherId, studentId] });
     await refresh();
   } });
   const record = detail.data;
@@ -89,7 +92,8 @@ function StudentDetail({ teacherId, studentId, onClose, onRemoved }: { teacherId
     {detail.isPending ? <LoadingState message="Loading student progress..." /> : detail.isError || !record ? <ErrorState message={enrollmentError(detail.error)} onRetry={() => { void detail.refetch(); }} retrying={detail.isFetching} /> : <>
       <h4 className="font-bold break-words">{record.student.firstName} {record.student.lastName}</h4><p className="text-sm break-all">{record.student.email}</p><p className="text-xs text-muted break-all">Student ID: {record.student.id}</p>
       <dl className="grid gap-3 sm:grid-cols-2 text-sm">{[['Attempts', record.progress.attempts], ['Completed attempts', record.progress.completedAttempts], ['Average score', record.progress.averageScore], ['Best score', record.progress.bestScore]].map(([label, value]) => <div className="rounded-lg bg-canvas p-3" key={label}><dt className="text-muted">{label}</dt><dd className="text-xl font-bold">{value}</dd></div>)}</dl>
-      <p className="text-sm text-muted">Scores are shown as recorded, without converting them to percentages. This summary includes completed attempts, repeats and work before enrollment. Individual attempts and reports are not available in this view.</p>
+      <p className="text-sm text-muted">Scores are shown as recorded, without converting them to percentages. Average and best scores use completed attempts, including repeats and work before enrollment. Open academic records below for authorized history and reports.</p>
+      <StudentAcademics teacherId={teacherId} studentId={studentId} />
       {!confirm ? <button type="button" className="button-secondary text-sm" onClick={() => { remove.reset(); setConfirm(true); }}>Remove enrollment</button> : <section aria-labelledby="unenroll-confirm-heading" className="rounded-lg border border-danger/30 p-4 space-y-3">
         <h4 id="unenroll-confirm-heading" ref={confirmHeading} tabIndex={-1} className="font-bold">Confirm unenrollment</h4><p className="text-sm">Remove this student from your cohort? Their account, attempts and reports will be preserved. You will lose access to their detail and progress. Another teacher can enroll them after removal.</p>
         <div className="flex flex-wrap gap-3"><button type="button" className="button" disabled={remove.isPending} onClick={() => remove.mutate()}>{remove.isPending ? 'Removing...' : 'Confirm remove enrollment'}</button><button type="button" className="button-secondary" disabled={remove.isPending} onClick={() => { setConfirm(false); remove.reset(); heading.current?.focus(); }}>Cancel removal</button></div>

@@ -8,7 +8,8 @@ import { api } from '../services/api';
 vi.mock('../services/api', () => ({ api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() }, errorMessage: () => 'Request failed. Please try again.' }));
 const metrics = { students: 28, completedAttempts: 63, averageScore: 84, reports: 51 };
 const emptyList = { students: [], pagination: { page: 1, limit: 10, total: 0 } };
-function responses(value = metrics) { vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : { metrics: value } })); }
+const emptyAnalytics = { cohort: { enrolledStudents: 0, activeStudents: 0, inactiveStudents: 0, attemptedStudents: 0, completedStudents: 0, attemptCount: 0, completedAttemptCount: 0 }, experiments: [], pagination: { page: 1, limit: 10, total: 0 } };
+function responses(value = metrics) { vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : path === '/teacher/analytics/experiments' ? emptyAnalytics : { metrics: value } })); }
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><FacultyDashboard /></QueryClientProvider>);
@@ -29,14 +30,14 @@ describe('Teacher overview', () => {
     expect(screen.getByText(/inactive enrolled students/)).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/faculty/dashboard');
   });
-  it('connects enrollment while keeping unsupported performance and reports pending', async () => {
+  it('connects enrollment, cohort performance and student-specific reports', async () => {
     responses(); setup();
     await screen.findByText('28');
     expect(await screen.findByText('No enrolled students')).toBeInTheDocument();
     expect(screen.getByRole('region', { name: 'Student monitoring' })).toHaveTextContent('Enroll an existing student');
-    expect(screen.getByRole('region', { name: 'Experiment performance' })).toHaveTextContent('Experiment breakdown unavailable');
-    expect(screen.getByRole('region', { name: 'Reports and assessment review' })).toHaveTextContent('Teacher report browser unavailable');
-    expect(screen.getAllByText('Pending integration')).toHaveLength(2);
+    expect(screen.getByRole('region', { name: 'Experiment performance' })).toHaveTextContent('No enrolled students.');
+    expect(screen.getByRole('region', { name: 'Reports and assessment review' })).toHaveTextContent('Student reports');
+    expect(screen.queryByText('Pending integration')).not.toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/teacher/students', { params: { page: 1, limit: 10 } });
@@ -56,14 +57,14 @@ describe('Teacher overview', () => {
   });
   it('supports refresh and displays the newly returned totals', async () => {
     let count = 0;
-    vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : { metrics: count++ ? { ...metrics, students: 29 } : metrics } })); setup();
+    vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : path === '/teacher/analytics/experiments' ? emptyAnalytics : { metrics: count++ ? { ...metrics, students: 29 } : metrics } })); setup();
     await screen.findByText('28');
     fireEvent.click(screen.getByRole('button', { name: 'Refresh overview' }));
     expect(await screen.findByText('29')).toBeInTheDocument();
     expect(vi.mocked(api.get).mock.calls.filter(([path]) => path === '/faculty/dashboard')).toHaveLength(2);
   });
   it('does not convert an incomplete response into zero metrics', async () => {
-    vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : { metrics: { students: 28 } } })); setup();
+    vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : path === '/teacher/analytics/experiments' ? emptyAnalytics : { metrics: { students: 28 } } })); setup();
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load dashboard data.');
     expect(screen.queryByText('Average score')).not.toBeInTheDocument();
     expect(screen.queryByText('No enrolled cohort activity recorded yet')).not.toBeInTheDocument();

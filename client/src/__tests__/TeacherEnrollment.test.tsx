@@ -24,7 +24,7 @@ const enroll = (value = 'student@example.test') => { fireEvent.change(screen.get
 beforeEach(() => {
   vi.resetAllMocks(); assigned = false;
   useSessionStore.setState({ loaded: true, user: { id: 'teacher', firstName: 'Test', lastName: 'Teacher', email: 'teacher@example.test', role: 'faculty', isActive: true } });
-  vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? { students: assigned ? [row] : [], pagination: { page: 1, limit: 10, total: assigned ? 1 : 0 } } : path === '/faculty/dashboard' ? { metrics: { students: assigned ? 1 : 0 } } : { ...row, progress } }));
+  vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? { students: assigned ? [row] : [], pagination: { page: 1, limit: 10, total: assigned ? 1 : 0 } } : String(path).endsWith('/attempts') ? { attempts: [], pagination: { page: 1, limit: 10, total: 0 } } : path === '/faculty/dashboard' ? { metrics: { students: assigned ? 1 : 0 } } : { ...row, progress } }));
   vi.mocked(api.post).mockImplementation(async () => { assigned = true; return { data: row }; });
   vi.mocked(api.delete).mockImplementation(async () => { assigned = false; return { data: undefined }; });
 });
@@ -44,7 +44,7 @@ describe('Teacher enrollment', () => {
     expect(await screen.findByText('Dashboard cohort: 1')).toBeInTheDocument();
     expect(api.post).toHaveBeenCalledExactlyOnceWith('/teacher/students', { email: 'student@example.test' });
     expect(screen.getByLabelText('Student email address')).toHaveValue('');
-    for (const queryKey of [enrollmentKeys.lists, enrollmentKeys.details, ['faculty-dashboard'], ['student-enrollment']]) expect(invalidate).toHaveBeenCalledWith({ queryKey });
+    for (const queryKey of [enrollmentKeys.lists, enrollmentKeys.details, ['faculty-dashboard'], ['student-enrollment'], ['teacher-academics'], ['teacher-analytics']]) expect(invalidate).toHaveBeenCalledWith({ queryKey });
   });
   it('uses only studentId after switching identifier modes', async () => {
     setup(); await screen.findByText('No enrolled students');
@@ -81,6 +81,7 @@ describe('Teacher enrollment', () => {
     expect(await screen.findByText('Dashboard cohort: 0')).toBeInTheDocument();expect(await screen.findByText('No enrolled students')).toBeInTheDocument();
     expect(api.delete).toHaveBeenCalledExactlyOnceWith(`/teacher/students/${studentId}`);expect(screen.queryByRole('region', { name: 'Student detail' })).not.toBeInTheDocument();
     expect(client.getQueryData(enrollmentKeys.detail('teacher', studentId))).toBeUndefined();
+    expect(client.getQueriesData({ queryKey: ['teacher-academics', 'teacher', studentId] })).toEqual([]);
   });
   it('keeps an unsuccessful removal visible instead of claiming deletion', async () => {
     assigned = true; vi.mocked(api.delete).mockRejectedValue(new Error('offline'));setup();fireEvent.click(await screen.findByRole('button', { name: 'View student: Demo Student' }));

@@ -53,6 +53,8 @@ export function useRefreshEnrollments() {
     client.invalidateQueries({ queryKey: enrollmentKeys.details }),
     client.invalidateQueries({ queryKey: ['faculty-dashboard'] }),
     client.invalidateQueries({ queryKey: ['student-enrollment'] }),
+    client.invalidateQueries({ queryKey: ['teacher-academics'] }),
+    client.invalidateQueries({ queryKey: ['teacher-analytics'] }),
   ]);
 }
 export function enrollmentError(error: unknown) {

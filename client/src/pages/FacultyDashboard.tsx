@@ -7,6 +7,7 @@ import { LoadingState, ErrorState } from '../components/common/QueryState';
 import { MetricCard } from '../components/common/MetricCard';
 import { PendingIntegration } from '../components/common/PendingIntegration';
 import { TeacherEnrollment } from '../components/faculty/TeacherEnrollment';
+import { CohortPerformance } from '../components/faculty/CohortPerformance';
 
 interface FacultyMetrics { students: number; completedAttempts: number; averageScore: number; reports: number; }
 
@@ -39,7 +40,7 @@ export function FacultyDashboard() {
             <MetricCard label="Active students" value={metrics.students} description={isAdmin ? 'Active student accounts across the platform.' : 'Active student accounts currently enrolled with you.'} icon={<Users size={22} />} />
             <MetricCard label="Completed attempts" value={metrics.completedAttempts} description={isAdmin ? 'All completed attempts, including repeated experiments.' : 'Completed attempts by your enrolled students, including repeats and history before enrollment.'} icon={<BookOpen size={22} />} />
             <MetricCard label="Average score" value={metrics.averageScore} description="Rounded average recorded score across completed attempts, including repeats. Scores are not converted to percentages. The average is zero when no completed attempts exist." icon={<Award size={22} />} />
-            <MetricCard label="Reports recorded" value={metrics.reports} description={isAdmin ? 'Report records across the platform. Individual teacher downloads are not available yet.' : 'Report records for your enrolled students. Individual teacher downloads are not available yet.'} icon={<FileText size={22} />} />
+            <MetricCard label="Reports recorded" value={metrics.reports} description={isAdmin ? 'Report records across the platform.' : 'Report records for your enrolled students. Open student detail to download available PDFs.'} icon={<FileText size={22} />} />
           </div>
           {!isAdmin && <p className="text-sm text-muted">The student count includes active enrolled accounts. Assessment totals also include inactive enrolled students' history. Unassigned students are excluded.</p>}
           <p className="text-xs text-muted">Last fetched: {new Date(dashboard.dataUpdatedAt).toLocaleString()}. Use Refresh overview for updated totals.</p>
@@ -54,15 +55,14 @@ export function FacultyDashboard() {
       </section>
       <section id="experiment-performance" aria-labelledby="experiment-performance-heading" className="panel p-5 sm:p-6 space-y-4 scroll-mt-6">
         <h2 id="experiment-performance-heading" className="text-xl font-bold">Experiment performance</h2>
-        <p className="text-sm text-muted">The summary provides an overall score average and completed-attempt count. It does not provide a breakdown by experiment.</p>
-        <PendingIntegration title="Experiment breakdown unavailable" description="Per-experiment participation, completion and score comparisons require an authorized performance response. No comparison chart can be shown yet." />
+        {isAdmin ? <PendingIntegration title="Teacher selection required for analytics" description="Academic analytics are faculty-only. Admin academic management needs an explicitly approved teacher-scoped flow." /> : <CohortPerformance />}
       </section>
     </div>
     <section id="teacher-reports" aria-labelledby="teacher-reports-heading" className="panel p-5 sm:p-6 space-y-4 scroll-mt-6">
       <h2 id="teacher-reports-heading" className="text-xl font-bold">Reports and assessment review</h2>
-      <p className="text-sm text-muted">{isAdmin ? 'The overview counts report records across the platform. Report ownership and download access remain enforced by the server.' : 'The overview counts report records for your enrolled students. Enrollment does not grant access to student-only report downloads.'}</p>
+      <p className="text-sm text-muted">{isAdmin ? 'The overview counts report records across the platform. Report ownership and download access remain enforced by the server.' : 'Open an enrolled student’s detail, then choose Student reports to review metadata and download available PDFs through the teacher-authorized route. Student-only report APIs remain protected.'}</p>
       {!dashboard.isError && metrics?.reports === 0 && <p className="text-sm font-semibold">No reports recorded yet.</p>}
-      <PendingIntegration title="Teacher report browser unavailable" description="The existing report routes are for students. A teacher-authorized report listing and download contract is required before individual reports can be displayed here." />
+      {isAdmin && <PendingIntegration title="Admin academic access pending" description="Teacher report access does not grant platform-wide administrative report downloads." />}
     </section>
   </div>;
 }

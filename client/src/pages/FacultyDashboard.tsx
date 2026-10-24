@@ -6,6 +6,7 @@ import { PageHeading } from '../components/common/PageHeading';
 import { LoadingState, ErrorState } from '../components/common/QueryState';
 import { MetricCard } from '../components/common/MetricCard';
 import { PendingIntegration } from '../components/common/PendingIntegration';
+import { TeacherEnrollment } from '../components/faculty/TeacherEnrollment';
 
 interface FacultyMetrics { students: number; completedAttempts: number; averageScore: number; reports: number; }
 
@@ -37,7 +38,7 @@ export function FacultyDashboard() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <MetricCard label="Active students" value={metrics.students} description={isAdmin ? 'Active student accounts across the platform.' : 'Active student accounts currently enrolled with you.'} icon={<Users size={22} />} />
             <MetricCard label="Completed attempts" value={metrics.completedAttempts} description={isAdmin ? 'All completed attempts, including repeated experiments.' : 'Completed attempts by your enrolled students, including repeats and history before enrollment.'} icon={<BookOpen size={22} />} />
-            <MetricCard label="Average score" value={`${metrics.averageScore}%`} description="Rounded average across completed attempts, including repeats. The server returns zero when none exist." icon={<Award size={22} />} />
+            <MetricCard label="Average score" value={metrics.averageScore} description="Rounded average recorded score across completed attempts, including repeats. Scores are not converted to percentages. The average is zero when no completed attempts exist." icon={<Award size={22} />} />
             <MetricCard label="Reports recorded" value={metrics.reports} description={isAdmin ? 'Report records across the platform. Individual teacher downloads are not available yet.' : 'Report records for your enrolled students. Individual teacher downloads are not available yet.'} icon={<FileText size={22} />} />
           </div>
           {!isAdmin && <p className="text-sm text-muted">The student count includes active enrolled accounts. Assessment totals also include inactive enrolled students' history. Unassigned students are excluded.</p>}
@@ -46,12 +47,10 @@ export function FacultyDashboard() {
           {metrics.students > 0 && metrics.completedAttempts === 0 && <p className="panel p-4 text-sm text-muted">No completed attempts yet. Active student accounts do not imply that an experiment has been completed.</p>}
         </>}
     </section>
-    <div className="grid gap-5 lg:grid-cols-2">
+    <div className="grid gap-5">
       <section id="student-monitoring" aria-labelledby="student-monitoring-heading" className="panel p-5 sm:p-6 space-y-4 scroll-mt-6">
         <h2 id="student-monitoring-heading" className="text-xl font-bold">Student monitoring</h2>
-        <p className="text-sm text-muted">{isAdmin ? 'Student monitoring requires an explicitly selected teacher; admin access does not impersonate a faculty session.' : 'The backend supports your enrolled-student list and aggregate student detail. Monitoring screens are not connected yet.'}</p>
-        <PendingIntegration title="Student monitoring UI pending" description={isAdmin ? 'Admin teacher-scoped listing and detail APIs exist. A reliable teacher selection flow is still needed before connecting this view.' : 'Enrolled-student listing and aggregate detail APIs are available. This dashboard currently displays summary metrics only; individual attempt history is not supplied.'} />
-        <PendingIntegration title="Enrollment UI pending" description="The backend supports enrolling an existing active student by ID or exact email and removing an assignment. These controls are not connected in this stage." />
+        {isAdmin ? <><p className="text-sm text-muted">Student monitoring requires an explicitly selected teacher; admin access does not impersonate a faculty session.</p><PendingIntegration title="Teacher selection required" description="Admin teacher-scoped APIs exist. Select a teacher through a future admin management flow; faculty-only enrollment controls are not available to administrators." /></> : <TeacherEnrollment />}
       </section>
       <section id="experiment-performance" aria-labelledby="experiment-performance-heading" className="panel p-5 sm:p-6 space-y-4 scroll-mt-6">
         <h2 id="experiment-performance-heading" className="text-xl font-bold">Experiment performance</h2>

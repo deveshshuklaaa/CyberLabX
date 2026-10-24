@@ -5,8 +5,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { FacultyDashboard } from '../pages/FacultyDashboard';
 import { api } from '../services/api';
 
-vi.mock('../services/api', () => ({ api: { get: vi.fn() } }));
+vi.mock('../services/api', () => ({ api: { get: vi.fn(), post: vi.fn(), delete: vi.fn() }, errorMessage: () => 'Request failed. Please try again.' }));
 const metrics = { students: 28, completedAttempts: 63, averageScore: 84, reports: 51 };
+const emptyList = { students: [], pagination: { page: 1, limit: 10, total: 0 } };
+function responses(value = metrics) { vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : { metrics: value } })); }
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><FacultyDashboard /></QueryClientProvider>);
@@ -14,11 +16,12 @@ function setup() {
 beforeEach(() => { vi.clearAllMocks(); useSessionStore.setState({ user: { id: 'teacher', firstName: 'Test', lastName: 'Teacher', email: 'teacher@example.test', role: 'faculty', isActive: true } }); });
 describe('Teacher overview', () => {
   it('displays all four real metrics with clear enrolled-cohort scope and definitions', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { metrics } }); setup();
+    responses(); setup();
     const summary = within(screen.getByRole('region', { name: 'Enrolled cohort summary' }));
     expect(await summary.findByText('28')).toBeInTheDocument();
     expect(summary.getByText('63')).toBeInTheDocument();
-    expect(summary.getByText('84%')).toBeInTheDocument();
+    expect(summary.getByText('84')).toBeInTheDocument();
+    expect(summary.queryByText('84%')).not.toBeInTheDocument();
     expect(summary.getByText('51')).toBeInTheDocument();
     expect(summary.getByText('Active students')).toBeInTheDocument();
     expect(summary.getByText(/including repeats and history before enrollment/)).toBeInTheDocument();
@@ -26,41 +29,43 @@ describe('Teacher overview', () => {
     expect(screen.getByText(/inactive enrolled students/)).toBeInTheDocument();
     expect(api.get).toHaveBeenCalledWith('/faculty/dashboard');
   });
-  it('shows pending sections without invented student records, charts or report downloads', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { metrics } }); setup();
+  it('connects enrollment while keeping unsupported performance and reports pending', async () => {
+    responses(); setup();
     await screen.findByText('28');
-    expect(screen.getByRole('region', { name: 'Student monitoring' })).toHaveTextContent('Student monitoring UI pending');
+    expect(await screen.findByText('No enrolled students')).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Student monitoring' })).toHaveTextContent('Enroll an existing student');
     expect(screen.getByRole('region', { name: 'Experiment performance' })).toHaveTextContent('Experiment breakdown unavailable');
     expect(screen.getByRole('region', { name: 'Reports and assessment review' })).toHaveTextContent('Teacher report browser unavailable');
-    expect(screen.getAllByText('Pending integration')).toHaveLength(4);
+    expect(screen.getAllByText('Pending integration')).toHaveLength(2);
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     expect(screen.queryByRole('link', { name: /Download/ })).not.toBeInTheDocument();
-    expect(vi.mocked(api.get).mock.calls.every(([path]) => path === '/faculty/dashboard')).toBe(true);
+    expect(api.get).toHaveBeenCalledWith('/teacher/students', { params: { page: 1, limit: 10 } });
     expect(screen.getByRole('link', { name: 'Student monitoring' })).toHaveAttribute('href', '#student-monitoring');
   });
   it('distinguishes empty metrics from pending integrations', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { metrics: { students: 0, completedAttempts: 0, averageScore: 0, reports: 0 } } }); setup();
+    responses({ students: 0, completedAttempts: 0, averageScore: 0, reports: 0 }); setup();
     expect(await screen.findByText('No enrolled cohort activity recorded yet')).toBeInTheDocument();
-    expect(screen.getByText('0%')).toBeInTheDocument();
+    expect(screen.getByText('Average score').parentElement).toHaveTextContent('0');
     expect(screen.getByText('No reports recorded yet.')).toBeInTheDocument();
-    expect(screen.getByText('Student monitoring UI pending')).toBeInTheDocument();
+    expect(await screen.findByText('No enrolled students')).toBeInTheDocument();
   });
   it('does not treat active students as completed learning activity', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { metrics: { ...metrics, completedAttempts: 0 } } }); setup();
+    responses({ ...metrics, completedAttempts: 0 }); setup();
     expect(await screen.findByText(/No completed attempts yet/)).toBeInTheDocument();
     expect(screen.queryByText('No enrolled cohort activity recorded yet')).not.toBeInTheDocument();
   });
   it('supports refresh and displays the newly returned totals', async () => {
-    vi.mocked(api.get).mockResolvedValueOnce({ data: { metrics } }).mockResolvedValue({ data: { metrics: { ...metrics, students: 29 } } }); setup();
+    let count = 0;
+    vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : { metrics: count++ ? { ...metrics, students: 29 } : metrics } })); setup();
     await screen.findByText('28');
     fireEvent.click(screen.getByRole('button', { name: 'Refresh overview' }));
     expect(await screen.findByText('29')).toBeInTheDocument();
-    expect(api.get).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(api.get).mock.calls.filter(([path]) => path === '/faculty/dashboard')).toHaveLength(2);
   });
   it('does not convert an incomplete response into zero metrics', async () => {
-    vi.mocked(api.get).mockResolvedValue({ data: { metrics: { students: 28 } } }); setup();
+    vi.mocked(api.get).mockImplementation(path => Promise.resolve({ data: path === '/teacher/students' ? emptyList : { metrics: { students: 28 } } })); setup();
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load dashboard data.');
-    expect(screen.queryByText('0%')).not.toBeInTheDocument();
+    expect(screen.queryByText('Average score')).not.toBeInTheDocument();
     expect(screen.queryByText('No enrolled cohort activity recorded yet')).not.toBeInTheDocument();
   });
   it('keeps admin metrics platform-wide without calling faculty-only student routes', async () => {

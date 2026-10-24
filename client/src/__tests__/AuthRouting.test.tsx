@@ -23,12 +23,12 @@ function visit(path: string, role?: Role) {
   window.history.replaceState({}, '', path); render(<App />);
 }
 describe('actual app protected routes', () => {
-  it.each(['/student', '/teacher', '/teacher/dashboard', '/admin'])('requires a session for %s', async path => {
+  it.each(['/student', '/teacher', '/teacher/dashboard', '/faculty', '/admin'])('requires a session for %s', async path => {
     visit(path); expect(await screen.findByText('Login page')).toBeInTheDocument();
   });
   it.each([
     ['student', '/teacher', 'Student home'], ['student', '/faculty', 'Student home'], ['student', '/admin/dashboard', 'Student home'],
-    ['faculty', '/teacher', 'Teacher home'], ['faculty', '/teacher/dashboard', 'Teacher home'], ['faculty', '/admin', 'Teacher home'],
+    ['faculty', '/teacher', 'Teacher home'], ['faculty', '/faculty', 'Teacher home'], ['admin', '/faculty', 'Teacher home'], ['faculty', '/teacher/dashboard', 'Teacher home'], ['faculty', '/admin', 'Teacher home'],
     ['admin', '/admin', 'Admin home'], ['admin', '/teacher', 'Teacher home'],
     ['student', '/', 'Student home'], ['faculty', '/', 'Teacher home'], ['admin', '/', 'Admin home'],
     ['student', '/student/experiments', 'Experiments'],

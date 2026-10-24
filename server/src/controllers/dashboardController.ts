@@ -1,5 +1,16 @@
 import { asyncHandler } from '../utils/asyncHandler.js'; import { Attempt } from '../models/Attempt.js'; import { User } from '../models/User.js'; import { Report } from '../models/Report.js'; import { Experiment } from '../models/Experiment.js'; import { AuditEvent } from '../models/AuditEvent.js';
-export const facultyDashboard = asyncHandler(async (_req, res) => { const [students, completed, scores, reports] = await Promise.all([User.countDocuments({ role: 'student', isActive: true }), Attempt.countDocuments({ status: 'completed' }), Attempt.aggregate([{ $match: { status: 'completed' } }, { $group: { _id: null, average: { $avg: '$score' } } }]), Report.countDocuments()]); res.json({ metrics: { students, completedAttempts: completed, averageScore: Math.round(scores[0]?.average ?? 0), reports } }); });
+export const facultyDashboard = asyncHandler(async (req, res) => {
+  const faculty = req.user!.role === 'faculty';
+  const studentScope = faculty ? { studentId: { $in: (await User.find({ role: 'student', teacherId: req.user!._id }).select('_id').lean()).map(student => student._id) } } : {};
+  const completedScope = { ...studentScope, status: 'completed' };
+  const [students, completed, scores, reports] = await Promise.all([
+    User.countDocuments({ role: 'student', isActive: true, ...(faculty ? { teacherId: req.user!._id } : {}) }),
+    Attempt.countDocuments(completedScope),
+    Attempt.aggregate([{ $match: completedScope }, { $group: { _id: null, average: { $avg: '$score' } } }]),
+    Report.countDocuments(studentScope),
+  ]);
+  res.json({ metrics: { students, completedAttempts: completed, averageScore: Math.round(scores[0]?.average ?? 0), reports } });
+});
 export const adminDashboard = asyncHandler(async (_req, res) => { const [users, activeStudents, attempts, events] = await Promise.all([User.countDocuments(), User.countDocuments({ role: 'student', isActive: true }), Attempt.countDocuments(), AuditEvent.find().sort({ createdAt: -1 }).limit(20).lean()]); res.json({ metrics: { users, activeStudents, attempts }, events }); });
 
 /** Read-only academic progress view. Scores and completion states remain owned by Attempt. */

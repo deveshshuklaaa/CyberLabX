@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,13 +9,13 @@ import { useSessionStore } from '../store/sessionStore';
 
 beforeEach(() => { vi.resetAllMocks(); useSessionStore.setState({ user: null, loaded: true }); });
 afterEach(cleanup);
-function login(path = '/login') {
-  return render(<MemoryRouter initialEntries={[path]}><Routes>
+function login(path = '/login', client = new QueryClient()) {
+  return render(<QueryClientProvider client={client}><MemoryRouter initialEntries={[path]}><Routes>
     <Route path="/login" element={<Login />} />
     <Route path="/student" element={<p>Student home</p>} />
     <Route path="/teacher" element={<p>Teacher home</p>} />
     <Route path="/admin" element={<p>Admin home</p>} />
-  </Routes></MemoryRouter>);
+  </Routes></MemoryRouter></QueryClientProvider>);
 }
 describe('Google login entry and existing password login', () => {
   it('links directly to the backend with no frontend OAuth credentials', () => {
@@ -47,5 +48,11 @@ describe('Google login entry and existing password login', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Link Google to this account' }));
     await waitFor(() => expect(api.post).toHaveBeenCalledWith('/auth/google/link'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Please try again.');
+  });
+  it('cancels and clears prior-role cached data before setting the new authenticated identity', async () => {
+    const client = new QueryClient(); client.setQueryData(['admin-users', 'old-admin'], { private: 'old-account' });
+    const cancel = vi.spyOn(client, 'cancelQueries'); vi.mocked(api.post).mockResolvedValue({ data: { user: { id: 'new-student', role: 'student', firstName: 'New', lastName: '', email: 'new@example.test', isActive: true } } });
+    const view = login('/login', client); fireEvent.change(screen.getByLabelText('University Email ID'), { target: { value: 'new@example.test' } }); fireEvent.change(view.container.querySelector('input[type=password]')!, { target: { value: 'unit-password' } }); fireEvent.click(screen.getByRole('button', { name: 'Access Virtual Laboratories' }));
+    await screen.findByText('Student home'); expect(cancel).toHaveBeenCalled(); expect(client.getQueryCache().getAll()).toHaveLength(0); expect(useSessionStore.getState().user?.id).toBe('new-student');
   });
 });

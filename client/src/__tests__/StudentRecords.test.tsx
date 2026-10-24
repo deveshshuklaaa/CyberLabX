@@ -125,8 +125,9 @@ describe('Student profile', () => {
   it.each([true, false])('clears the session through existing logout handling (request succeeds: %s)', async success => {
     if (success) vi.mocked(api.post).mockResolvedValue({ data: {} }); else vi.mocked(api.post).mockRejectedValue(new Error('offline'));
     setup('/profile'); fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByText('Login destination')).toBeInTheDocument();
-    expect(useSessionStore.getState().user).toBeNull(); expect(api.post).toHaveBeenCalledWith('/auth/logout');
+    if (success) { expect(await screen.findByText('Login destination')).toBeInTheDocument(); expect(useSessionStore.getState().user).toBeNull(); }
+    else { expect(await screen.findByRole('alert')).toHaveTextContent('Sign out could not be confirmed'); expect(useSessionStore.getState().user).not.toBeNull(); expect(screen.queryByText('Login destination')).not.toBeInTheDocument(); }
+    expect(api.post).toHaveBeenCalledWith('/auth/logout');
   });
   it('shows inactive status accurately', () => {
     useSessionStore.setState({ user: { ...useSessionStore.getState().user!, isActive: false } }); setup('/profile');

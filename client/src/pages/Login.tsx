@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
@@ -17,6 +18,7 @@ const googleErrors: Record<string, string> = {
 };
 
 export function Login() {
+  const client = useQueryClient();
   const [searchParams] = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -40,12 +42,13 @@ export function Login() {
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
+    if (busy) return;
     setBusy(true);
     setError('');
     try {
       const { data } = await api.post('/auth/login', { email, password });
-      setUser(data.user);
-      navigate(roleHome(data.user.role));
+      await client.cancelQueries(); client.clear(); setUser(data.user); useSessionStore.getState().setLoaded(); setPassword('');
+      navigate(roleHome(data.user.role), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {

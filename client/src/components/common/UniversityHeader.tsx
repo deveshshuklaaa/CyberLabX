@@ -1,25 +1,20 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { ExternalLink, LogOut, Menu, ShieldCheck, X } from 'lucide-react';
 import { BrandLockup } from './BrandLockup';
 import { PortalNavigation } from './PortalNavigation';
-import { api } from '../../services/api';
+import { useSignOut } from '../../hooks/useSignOut';
 import { useSessionStore } from '../../store/sessionStore';
 
 export function UniversityHeader() {
-  const queryClient = useQueryClient();
-  const { user, setUser } = useSessionStore();
-  const navigate = useNavigate();
+  const { signOut, pending, error } = useSignOut();
+  const { user } = useSessionStore();
   const location = useLocation();
   const [openPath, setOpenPath] = useState<string | null>(null);
   const toggle = useRef<HTMLButtonElement>(null);
   const open = openPath === location.pathname;
   const close = () => setOpenPath(null);
-  const logout = async () => {
-    try { await api.post('/auth/logout'); } catch { /* Preserve existing logout behavior. */ }
-    finally { close(); queryClient.clear(); setUser(null); navigate('/login'); }
-  };
+  const logout = () => { void signOut(); };
   return <header className="border-b border-line bg-surface shadow-sm">
     <div className="bg-brand-dark text-white px-4 sm:px-6 py-2 text-xs">
       <div className="mx-auto max-w-7xl flex flex-wrap justify-between gap-2">
@@ -36,7 +31,7 @@ export function UniversityHeader() {
           <p className="font-semibold break-words">{user?.firstName} {user?.lastName}</p>
           <p className="text-xs text-muted">{user?.role === 'faculty' ? 'Teacher' : user?.role} account</p>
         </div>
-        <button type="button" className="button-secondary gap-2 text-sm" onClick={logout}><LogOut size={16} aria-hidden="true" />Sign Out</button>
+        <button type="button" className="button-secondary gap-2 text-sm" onClick={logout} disabled={pending}><LogOut size={16} aria-hidden="true" />{pending ? 'Signing out...' : 'Sign Out'}</button>
       </div>
       <button ref={toggle} type="button" className="button-secondary md:hidden shrink-0 !p-3" aria-label="Toggle navigation menu"
         aria-expanded={open} aria-controls="mobile-portal-navigation" onClick={() => setOpenPath(open ? null : location.pathname)}>
@@ -48,7 +43,8 @@ export function UniversityHeader() {
       onKeyDown={event => { if (event.key === 'Escape') { close(); toggle.current?.focus(); } }}>
       <p className="text-sm font-semibold break-words mb-3">{user?.firstName} {user?.lastName}</p>
       <nav aria-label="Mobile navigation" className="flex flex-col gap-1"><PortalNavigation onNavigate={close} /></nav>
-      <button type="button" className="button-secondary gap-2 mt-4 w-full" onClick={logout}><LogOut size={16} aria-hidden="true" />Sign Out</button>
+      <button type="button" className="button-secondary gap-2 mt-4 w-full" onClick={logout} disabled={pending}><LogOut size={16} aria-hidden="true" />{pending ? 'Signing out...' : 'Sign Out'}</button>
     </div>
+    {error && <p role="alert" className="error-panel m-4 text-sm">{error}</p>}
   </header>;
 }

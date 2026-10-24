@@ -62,14 +62,20 @@ function UserDetail({ adminId, userId, onClose }: { adminId: string; userId: str
 function AccountReview({ user, adminId }: { user: AdminUser; adminId: string }) {
   const [role, setRole] = useState<Role>(user.role), [active, setActive] = useState(user.isActive), [review, setReview] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
-  useEffect(() => { if (review) heading.current?.focus(); }, [review]);
+  const reviewButton = useRef<HTMLButtonElement>(null);
+  const wasReviewing = useRef(false);
+  useEffect(() => {
+    if (review) heading.current?.focus();
+    else if (wasReviewing.current) reviewButton.current?.focus();
+    wasReviewing.current = review;
+  }, [review]);
   return <section aria-label="Account change review" className="rounded-lg border border-line p-4 space-y-4">
     <h4 className="font-bold">Review role and status changes</h4><p className="text-sm text-muted">{blockedAccountMessage} Draft selections below do not change the account.</p>
     {user.id === adminId && <p className="text-sm text-danger">You cannot demote or deactivate your own administrator account.</p>}
     {review ? <ConfirmDialog label="Confirm account changes" onCancel={() => setReview(false)}><div className="space-y-3"><h5 ref={heading} tabIndex={-1} className="font-bold">Review selected account</h5><p className="text-sm break-all">Account: {user.id}</p><p className="text-sm">Role: {user.role} → {role}. Status: {user.isActive ? 'Active' : 'Inactive'} → {active ? 'Active' : 'Inactive'}.</p><p className="text-sm text-muted">No change has been submitted. Account updates are unavailable.</p><div className="flex flex-wrap gap-3"><button className="button" disabled>Apply account changes unavailable</button><button className="button-secondary" onClick={() => setReview(false)}>Cancel account changes</button></div></div></ConfirmDialog> : <>
       <div className="grid gap-4 sm:grid-cols-2"><div><label htmlFor="account-draft-role" className="label">Proposed account role</label><select id="account-draft-role" className="field" value={role} onChange={e => setRole(e.target.value as Role)}><option value="student">Student</option><option value="faculty">Teacher (faculty)</option><option value="admin">Administrator</option></select></div><div><label htmlFor="account-draft-active" className="label">Proposed account status</label><select id="account-draft-active" className="field" value={String(active)} onChange={e => setActive(e.target.value === 'true')}><option value="true">Active</option><option value="false">Inactive</option></select></div></div>
       <p className="text-xs text-muted">Students promoted to another role must lose only their assignment, retaining academic records. Inactive students/teachers retain assignments. Teacher role removal requires explicit cohort releases. These guarded updates remain unavailable.</p>
-      <button className="button-secondary" disabled={role === user.role && active === user.isActive || user.id === adminId && (role !== 'admin' || !active)} onClick={() => setReview(true)}>Review proposed changes</button>
+      <button ref={reviewButton} className="button-secondary" disabled={role === user.role && active === user.isActive || user.id === adminId && (role !== 'admin' || !active)} onClick={() => setReview(true)}>Review proposed changes</button>
     </>}
   </section>;
 }

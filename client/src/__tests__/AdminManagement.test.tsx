@@ -49,6 +49,12 @@ describe('Admin directory and safe account review', () => {
     fireEvent.change(screen.getByLabelText('Proposed account role'), { target: { value: 'student' } }); fireEvent.click(screen.getByRole('button', { name: 'Review proposed changes' }));
     const dialog = await screen.findByRole('dialog', { name: 'Confirm account changes' }); expect(within(dialog).getByRole('button', { name: 'Apply account changes unavailable' })).toBeDisabled();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel account changes' })); expect(screen.queryByRole('dialog')).not.toBeInTheDocument(); expect(api.patch).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Review proposed changes' })).toHaveFocus();
+    fireEvent.click(screen.getByRole('button', { name: 'Review proposed changes' }));
+    fireEvent(screen.getByRole('dialog', { name: 'Confirm account changes' }), new Event('cancel', { bubbles: false, cancelable: true }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Review proposed changes' })).toHaveFocus();
+    expect(api.patch).not.toHaveBeenCalled();
   });
   it('never enables self demotion/deactivation or account creation', async () => {
     vi.mocked(api.get).mockResolvedValueOnce({ data: { users: [{ ...teacher, id: adminId, role: 'admin' }], pagination, management } }).mockResolvedValueOnce({ data: { user: { ...teacher, id: adminId, role: 'admin' }, management } });

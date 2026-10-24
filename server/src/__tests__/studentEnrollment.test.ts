@@ -1,5 +1,6 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
+import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { Types } from 'mongoose';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -279,15 +280,41 @@ describe('enrollment session and role authorization', () => {
     expect((await response.json()).enrollment.teacherId).toBe(String(ids.teacherA));
     expect((await call(`/student/enrollment/${ids.studentB}`, { as: 'studentA' })).status).toBe(404);
   });
-  it('keeps role and teacher assignment out of public self-registration', async () => {
+  it('creates an authenticated Student with a normalized email and hashed password', async () => {
     const response = await call('/auth/register', { as: null, method: 'POST', body: {
-      firstName: 'New', lastName: 'Student', email: 'new@example.test', password: 'long-enough-test-password',
-      role: 'admin', teacherId: String(ids.teacherA), enrolledAt: new Date().toISOString(),
+      firstName: ' New ', lastName: ' Student ', email: ' New@Example.Test ', password: 'long-enough-test-password',
     } });
     expect(response.status).toBe(201);
     expect(response.headers.getSetCookie().some(cookie => cookie.includes('HttpOnly') && cookie.startsWith('cyberlabx_session='))).toBe(true);
     const created = accounts.find(row => row.email === 'new@example.test');
-    expect(created.role).toBe('student'); expect(created.teacherId).toBeUndefined(); expect(created.enrolledAt).toBeUndefined();
+    expect(created).toMatchObject({ firstName: 'New', lastName: 'Student', role: 'student', isActive: true });
+    expect(created.password).toBeUndefined();
+    expect(created.passwordHash).not.toBe('long-enough-test-password');
+    expect(await bcrypt.compare('long-enough-test-password', created.passwordHash)).toBe(true);
+    expect(JSON.stringify(await response.json())).not.toMatch(/password|hash/i);
+  });
+  it('rejects public registration fields that could assign privileges or enrollment', async () => {
+    for (const extra of [{ role: 'admin' }, { role: 'faculty' }, { teacherId: String(ids.teacherA) }, { enrolledAt: new Date().toISOString() }]) {
+      const response = await call('/auth/register', { as: null, method: 'POST', body: {
+        firstName: 'New', lastName: 'Student', email: 'new@example.test', password: 'long-enough-test-password', ...extra,
+      } });
+      expect(response.status).toBe(400);
+    }
+    expect(accounts.some(row => row.email === 'new@example.test')).toBe(false);
+  });
+  it('returns a clear conflict for existing emails and uniqueness races', async () => {
+    const existing = await call('/auth/register', { as: null, method: 'POST', body: {
+      firstName: 'Existing', lastName: 'Student', email: 'studenta@example.test', password: 'long-enough-test-password',
+    } });
+    expect(existing.status).toBe(409);
+    expect(await existing.json()).toEqual({ message: 'An account with this email already exists.' });
+
+    vi.mocked(User.create).mockRejectedValueOnce(Object.assign(new Error('duplicate key'), { code: 11000 }));
+    const race = await call('/auth/register', { as: null, method: 'POST', body: {
+      firstName: 'Racing', lastName: 'Student', email: 'race@example.test', password: 'long-enough-test-password',
+    } });
+    expect(race.status).toBe(409);
+    expect(await race.json()).toEqual({ message: 'An account with this email already exists.' });
   });
 });
 

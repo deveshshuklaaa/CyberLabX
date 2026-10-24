@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import React, { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Lock, Mail, ShieldAlert, ArrowRight } from 'lucide-react';
 import { api, errorMessage } from '../services/api';
 import { useSessionStore } from '../store/sessionStore';
@@ -111,7 +111,9 @@ export function Login() {
                 </div>
               )}
 
-              <a href={googleLoginUrl} className="button-secondary w-full justify-center mb-5 py-2.5 text-sm">
+              <h2 className="text-lg font-bold text-ink mb-4">Sign In</h2>
+
+              <a href={googleLoginUrl} className="button-secondary w-full justify-center mb-4 py-2.5 text-sm">
                 Continue with Google
               </a>
               {currentUser && (
@@ -127,7 +129,7 @@ export function Login() {
               <form onSubmit={submit} className="space-y-4">
                 <div>
                   <label htmlFor="login-email" className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
-                    University Email ID
+                    Email Address
                   </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
@@ -148,7 +150,7 @@ export function Login() {
 
                 <div>
                   <label htmlFor="login-password" className="block text-xs font-bold uppercase tracking-wider text-ink mb-1.5">
-                    Account Password
+                    Password
                   </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-muted">
@@ -172,10 +174,12 @@ export function Login() {
                   disabled={busy}
                   className="button w-full mt-6 py-2.5 text-sm gap-2"
                 >
-                  <span>{busy ? 'Authenticating with Somaiya Portal…' : 'Access Virtual Laboratories'}</span>
+                  <span>{busy ? 'Signing in…' : 'Sign In'}</span>
                   {!busy && <ArrowRight size={16} />}
                 </button>
               </form>
+
+              <p className="mt-6 text-center text-sm text-muted">Don't have an account? <Link to="/register" className="font-semibold underline">Create Account</Link></p>
 
             </div>
           </div>

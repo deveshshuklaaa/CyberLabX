@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, Award, BookOpen, Compass, History, User as UserIcon } from 'lucide-react';
 import { useStudentDashboard } from '../services/studentDashboard';
 import { scoreText } from '../services/studentScores';
@@ -14,6 +14,8 @@ const dateTime = attemptDate;
 const readableStatus = (status: RecentAttempt['status']) => ({ completed: 'Completed', running: 'In Progress', expired: 'Expired', failed: 'Failed' }[status] ?? status);
 
 export function StudentDashboard() {
+  const location = useLocation();
+  const registrationSuccess = Boolean((location.state as { registrationSuccess?: boolean } | null)?.registrationSuccess);
   const user = useSessionStore(state => state.user);
   const progress = useStudentDashboard();
   const catalogue = useCatalogue();
@@ -23,6 +25,7 @@ export function StudentDashboard() {
   const primary = experiments.find(experiment => experiment._id === running?.experimentId) ?? experiments[0];
   const stats = progress.data?.stats;
   return (<div className="space-y-8" data-testid="student-dashboard">
+    {registrationSuccess && <div role="status" className="status-badge status-success w-full justify-center rounded-lg p-3">Your Student account was created successfully. Welcome to CyberLabX.</div>}
     <section className="panel p-6 sm:p-8 border-t-4 border-t-brand">
       <p className="eyebrow">Somaiya Virtual Labs | Student Portal</p>
       <h1 className="page-title">Welcome back, {user?.firstName || 'student'}.</h1>

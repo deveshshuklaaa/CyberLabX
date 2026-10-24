@@ -64,8 +64,8 @@ describe('Frontend delivery integration', () => {
   });
   it('provides labeled login fields without embedded development credentials', async () => {
     useSessionStore.setState({ user: null }); open('/login');
-    expect(screen.getByLabelText('University Email ID')).toHaveAttribute('type', 'email');
-    expect(screen.getByLabelText('Account Password')).toHaveAttribute('type', 'password');
+    expect(screen.getByLabelText('Email Address')).toHaveAttribute('type', 'email');
+    expect(screen.getByLabelText('Password')).toHaveAttribute('type', 'password');
     expect(screen.queryByText('Development Seed Accounts:')).not.toBeInTheDocument();
   });
 });

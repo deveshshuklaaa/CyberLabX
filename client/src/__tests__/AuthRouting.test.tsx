@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('../hooks/useSession', () => ({ useSessionBootstrap: () => undefined }));
 vi.mock('../layouts/AppLayout', () => ({ AppLayout: () => <Outlet /> }));
 vi.mock('../pages/Login', () => ({ Login: () => <p>Login page</p> }));
+vi.mock('../pages/Registration', () => ({ Registration: () => <p>Registration page</p> }));
 vi.mock('../pages/StudentDashboard', () => ({ StudentDashboard: () => <p>Student home</p> }));
 vi.mock('../pages/FacultyDashboard', () => ({ FacultyDashboard: () => <p>Teacher home</p> }));
 vi.mock('../pages/AdminDashboard', () => ({ AdminDashboard: () => <p>Admin home</p> }));
@@ -23,6 +24,9 @@ function visit(path: string, role?: Role) {
   window.history.replaceState({}, '', path); render(<App />);
 }
 describe('actual app protected routes', () => {
+  it('keeps Student registration publicly reachable', async () => {
+    visit('/register'); expect(await screen.findByText('Registration page')).toBeInTheDocument();
+  });
   it.each(['/student', '/teacher', '/teacher/dashboard', '/faculty', '/admin'])('requires a session for %s', async path => {
     visit(path); expect(await screen.findByText('Login page')).toBeInTheDocument();
   });

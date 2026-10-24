@@ -21,6 +21,7 @@ describe('Google login entry and existing password login', () => {
   it('links directly to the backend with no frontend OAuth credentials', () => {
     login();
     expect(screen.getByRole('link', { name: 'Continue with Google' })).toHaveAttribute('href', 'http://localhost:5000/api/auth/google');
+    expect(screen.getByRole('link', { name: 'Create Account' })).toHaveAttribute('href', '/register');
     expect(screen.queryByRole('button', { name: 'Link Google to this account' })).not.toBeInTheDocument();
   });
   it('shows a safe, actionable OAuth error and ignores unrecognized error strings', () => {
@@ -36,7 +37,7 @@ describe('Google login entry and existing password login', () => {
     const view = login();
     fireEvent.change(screen.getByPlaceholderText('student@somaiya.edu'), { target: { value: 'user@example.test' } });
     fireEvent.change(view.container.querySelector('input[type=password]')!, { target: { value: 'test-password' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Access Virtual Laboratories' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
     expect(await screen.findByText(home)).toBeInTheDocument();
     expect(api.post).toHaveBeenCalledWith('/auth/login', { email: 'user@example.test', password: 'test-password' });
     expect(storage).not.toHaveBeenCalled(); storage.mockRestore();
@@ -52,7 +53,7 @@ describe('Google login entry and existing password login', () => {
   it('cancels and clears prior-role cached data before setting the new authenticated identity', async () => {
     const client = new QueryClient(); client.setQueryData(['admin-users', 'old-admin'], { private: 'old-account' });
     const cancel = vi.spyOn(client, 'cancelQueries'); vi.mocked(api.post).mockResolvedValue({ data: { user: { id: 'new-student', role: 'student', firstName: 'New', lastName: '', email: 'new@example.test', isActive: true } } });
-    const view = login('/login', client); fireEvent.change(screen.getByLabelText('University Email ID'), { target: { value: 'new@example.test' } }); fireEvent.change(view.container.querySelector('input[type=password]')!, { target: { value: 'unit-password' } }); fireEvent.click(screen.getByRole('button', { name: 'Access Virtual Laboratories' }));
+    const view = login('/login', client); fireEvent.change(screen.getByLabelText('Email Address'), { target: { value: 'new@example.test' } }); fireEvent.change(view.container.querySelector('input[type=password]')!, { target: { value: 'unit-password' } }); fireEvent.click(screen.getByRole('button', { name: 'Sign In' }));
     await screen.findByText('Student home'); expect(cancel).toHaveBeenCalled(); expect(client.getQueryCache().getAll()).toHaveLength(0); expect(useSessionStore.getState().user?.id).toBe('new-student');
   });
 });

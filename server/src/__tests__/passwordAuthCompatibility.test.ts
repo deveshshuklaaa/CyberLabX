@@ -18,4 +18,9 @@ describe('password authentication compatibility', () => {
     expect(await authenticate(' Teacher@Example.Test ', 'local-password')).toBe(user);
     expect(User.findOne).toHaveBeenCalledWith({ email: 'teacher@example.test' });
   });
+  it('rejects an inactive password account without comparing its password', async () => {
+    vi.mocked(User.findOne).mockReturnValue({ select: vi.fn().mockResolvedValue({ passwordHash: 'existing-hash', isActive: false, role: 'student' }) } as any);
+    expect(await authenticate('disabled@example.test', 'local-password')).toBeNull();
+    expect(bcrypt.compare).not.toHaveBeenCalled();
+  });
 });

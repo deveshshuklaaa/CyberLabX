@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppLayout } from './layouts/AppLayout';
 import { ProtectedRoute } from './routes/ProtectedRoute';
 import { Login } from './pages/Login';
+import { Registration } from './pages/Registration';
 import { StudentDashboard } from './pages/StudentDashboard';
 import { Experiments } from './pages/Experiments';
 import { ExperimentOverview } from './pages/ExperimentOverview';
@@ -22,6 +23,7 @@ function Shell() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Registration />} />
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           {/* Student portal pages */}

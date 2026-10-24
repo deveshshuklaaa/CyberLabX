@@ -16,10 +16,14 @@ describe.each([['faculty', FacultyDashboard, '/faculty/dashboard'], ['admin', Ad
   it('announces loading', () => {
     vi.mocked(api.get).mockImplementation(() => new Promise(() => {}));
     setup(Page);
-    expect(screen.getByRole('status')).toHaveTextContent('Loading');
+    expect(screen.getAllByRole('status')[0]).toHaveTextContent('Loading');
   });
   it('recovers from a failed request using the existing endpoint', async () => {
-    vi.mocked(api.get).mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ data: { metrics: { students: 12, completedAttempts: 3, averageScore: 80, reports: 2 }, events: [] } });
+    let failed = true;
+    vi.mocked(api.get).mockImplementation(path => {
+      if (path === endpoint && failed) { failed = false; return Promise.reject(new Error('offline')); }
+      return Promise.resolve({ data: { metrics: { students: 12, completedAttempts: 3, averageScore: 80, reports: 2, users: 12, activeStudents: 5, attempts: 10 }, events: [], experiments: [] } });
+    });
     setup(Page);
     expect(await screen.findByRole('alert')).toHaveTextContent('Unable to load dashboard data.');
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }));

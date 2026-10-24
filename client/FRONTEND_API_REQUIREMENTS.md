@@ -81,3 +81,61 @@ Agree field nullability, ISO timestamps, pagination, validation errors and 401/4
 404 handling. Coordinate shared API type changes separately. Loading, error,
 empty and pending-integration states must stay distinct; do not replace missing
 contracts with fabricated records, charts or successful mutations.
+
+
+## Stage 6: admin overview and management
+
+Verified existing admin-only routes, protected by session authentication and
+`allowRoles('admin')`:
+
+- `GET /api/admin/dashboard` returns `{ metrics: { users, activeStudents, attempts },
+  events }`. Users counts all accounts; activeStudents counts active student
+  accounts; attempts counts all attempt records. Events are the newest 20 by
+  creation time, with `_id`, `action`, `createdAt` and optional `userId`,
+  `resourceType`, `resourceId`, metadata, IP and user-agent. The UI displays action,
+  time and actor/resource IDs without assuming resolved names or live streaming.
+- `POST /api/admin/users` accepts firstName/lastName (nonempty), email, password
+  (minimum 12 characters) and role (`student`, `faculty`, `admin`); returns 201
+  `{ user: { id, firstName, lastName, email, role, isActive } }`. The UI defaults
+  to student, validates required inputs, reviews role/identity before submitting,
+  hides the password, prevents repeat submissions and clears it after the request.
+  Success uses only the returned account and refreshes overview queries. Account
+  creation does not imply invitation delivery or class enrollment.
+- `PATCH /api/admin/users/:id` accepts optional role and/or isActive (at least
+  one), returns `{ user }`, and records an audit event. Stage 6 does not call it:
+  there is no reliable user directory/lookup flow to identify an existing target.
+- Authenticated `GET /api/experiments` is permitted for admins and returns the
+  published catalogue; it excludes drafts, archived entries and management actions.
+  Student-protected frontend detail/workspace routes are not linked from admin UI.
+
+### Missing admin user listing and detail contracts
+
+Agree admin-only paginated directory and ID lookup, authoritative identity/role/
+active-state fields, supported role/status/search filters, stable sort, timestamps
+and total/cursor metadata. Specify invalid IDs, duplicates, forbidden/not-found
+responses and refresh behavior. Do not infer a user directory from audit actors.
+Before enabling PATCH controls, agree self-demotion/deactivation and last-admin
+safeguards, concurrency handling and intentional confirmation of privilege changes.
+No GET user listing route is assumed or requested by Stage 6.
+
+### Missing teacher management contracts
+
+Agree faculty-filtered directory/details, authorized cohort/class assignments,
+enrollment relationships and supported assignment mutations. Define whether teacher
+account creation alone has any teaching scope (none is inferred by the UI).
+Existing admin creation supports role faculty, but cannot establish assignments.
+
+### Missing experiment management contracts
+
+Agree admin-only list/detail access across published/draft/archived statuses,
+authoritative experiment schema, validation and permitted fields. Specify creation,
+editing, publishing and archival operations; version/concurrency rules; references
+to historical attempts/reports; audit behavior and safe allowed lab profiles.
+No frontend write should supply arbitrary lab images, commands or infrastructure
+configuration. Existing catalogue data is read-only; no CRUD routes are assumed.
+
+### Missing complete audit search
+
+For activity beyond the most recent 20, agree admin-only server pagination,
+action/actor/resource/date filters, deterministic ordering and retention policy.
+The current client-side filters apply only to the fetched snapshot.

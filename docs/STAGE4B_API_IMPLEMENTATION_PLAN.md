@@ -6,7 +6,12 @@ Reviewed HEAD: `d9ed56e306c6082222b3435f5524fa2fd0f95e0a`.
 Historical Stage 4B status: the subsequent Stage 5 request authorized teacher
 contracts T1/T2/T3/A1. Those reads are now implemented and verified locally; see
 [STAGE5_TEACHER_MONITORING.md](STAGE5_TEACHER_MONITORING.md) for the delivered
-semantics and evidence. All other proposals below retain their review gates.
+semantics and evidence. Stage 6 subsequently implements U1/U2/L1 and admin cohort
+UI, with POL-ADMIN-1 account mutations failing closed at the stated atomicity
+gate. No guard document, model version or topology change is introduced. Thus
+managementVersion remains explicitly null and POST/PATCH cannot succeed; see
+[STAGE6_ADMIN_MANAGEMENT.md](STAGE6_ADMIN_MANAGEMENT.md). Other proposals retain
+their review gates. The detailed sections below remain the historical design.
 Stage 4A enrollment remains complete and unchanged. No application, schema,
 database, infrastructure, authentication or remote changes are made in Stage 4B.
 

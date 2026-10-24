@@ -1,4 +1,24 @@
-# Frontend API requirements: teacher monitoring
+# Frontend API integration status and remaining requirements
+
+## Stage 6 admin delivery and account-write blocker
+
+Implemented locally: admin-only `GET /api/admin/users`, `GET /api/admin/users/:id`
+and `GET /api/admin/audit-events`; paginated user/name/exact-email/role/status
+filters, safe account detail, teacher listing and existing explicit teacher-cohort
+GET/POST/DELETE UI, plus full server-side audit filtering. The overview's newest
+20 events remain a separate labeled sample. Metrics/audits refresh after cohort
+mutations; those existing enrollment APIs do not create audit events.
+
+**Account creation and role/status submission are disabled.** The reviewed
+POL-ADMIN-1 atomicity prerequisite is unmet: actual local MongoDB is standalone,
+and no shared serialization guard/version/audit transaction service is approved
+or deployed. POST/PATCH fail closed with 503; duplicate existing email returns
+409, self-demotion/deactivation 409, invalid input 400. No successful account
+mutation is claimed. Directory/detail expose `management.writesAvailable:false`
+and `managementVersion:null`, not an invented persisted version.
+
+See [Stage 6 report](../docs/STAGE6_ADMIN_MANAGEMENT.md) for exact delivered
+contracts, real validation, tests and the work required before enabling writes.
 
 ## Stage 5 implementation status (local takeover)
 
@@ -28,15 +48,16 @@ The exact remaining API proposal and implementation gates are in
 It supersedes the open-ended future requirements below where it defines a
 specific proposal. Stage 4A enrollment is already implemented and must not be
 rebuilt. The Stage 5 teacher reads above are implemented under the Stage 5 request;
-the other proposals remain unimplemented and require separate approval.
+Stage 6 admin reads/cohort UI are implemented as listed above. Other proposals
+retain their separate approval gates.
 
-Remaining necessary proposals: admin user directory/lookup, safe hardening of
-the existing account PATCH, paginated audit filtering, category projection and
+Remaining necessary proposals: approved atomic account management, persisted
+management versions, category projection and
 truthful additive score/progress fields on existing student reads. Student-only
 attempt/report APIs stay student-only; admin teacher enrollment keeps explicit
-teacher-scoped routes. The existing PATCH currently lacks self/last-admin
-protection; the proposed policy and concurrency design require agreement before
-exposing update controls. The plan does not claim those safeguards already exist.
+teacher-scoped routes. PATCH now rejects self-demotion/deactivation and fails all
+other account updates closed. A successful versioned writer preserving the global
+last-admin invariant still requires the approved atomic design; it is not deployed.
 
 Optional: name-only self-service profile correction and limited admin editorial/
 status management if the demo scope explicitly requires them. Full assessment
@@ -89,8 +110,8 @@ is evicted. A student in another browser context can use Refresh enrollment or
 return focus to refetch; no cross-browser push synchronization is assumed.
 
 Admins viewing Teacher Portal never call faculty-only enrollment routes. Explicit
-teacher selection and the admin teacher-scoped management UI remain deferred.
-General admin user/teacher directories and experiment CRUD remain missing.
+teacher selection and teacher-scoped management are now on the admin page.
+Admin user/teacher directories are implemented; experiment CRUD remains missing.
 Individual teacher attempt/report access and experiment analytics are now implemented
 as listed above. Enrollment lists accept page/limit only; the new academic reads
 also support their documented exact filters. No fuzzy search or class model
@@ -174,40 +195,39 @@ Verified existing admin-only routes, protected by session authentication and
   events }`. Users counts all accounts; activeStudents counts active student
   accounts; attempts counts all attempt records. Events are the newest 20 by
   creation time, with `_id`, `action`, `createdAt` and optional `userId`,
-  `resourceType`, `resourceId`, metadata, IP and user-agent. The UI displays action,
+  `resourceType` and `resourceId`. Stage 6 removes raw metadata/IP/user-agent
+  from this response. The UI displays action,
   time and actor/resource IDs without assuming resolved names or live streaming.
-- `POST /api/admin/users` accepts firstName/lastName (nonempty), email, password
-  (minimum 12 characters) and role (`student`, `faculty`, `admin`); returns 201
-  `{ user: { id, firstName, lastName, email, role, isActive } }`. The UI defaults
-  to student, validates required inputs, reviews role/identity before submitting,
-  hides the password, prevents repeat submissions and clears it after the request.
-  Success uses only the returned account and refreshes overview queries. Account
-  creation does not imply invitation delivery or class enrollment.
-- `PATCH /api/admin/users/:id` accepts optional role and/or isActive (at least
-  one), returns `{ user }`, and records an audit event. Stage 6 does not call it:
-  there is no reliable user directory/lookup flow to identify an existing target.
+- `POST /api/admin/users` validates strict firstName/lastName (trimmed 1..60),
+  exact email (max 254), password (12..128) and role (`student`, `faculty`, `admin`).
+  Existing-email duplication is 409; otherwise valid creation is currently 503.
+  The unsafe create-then-audit writer is closed under POL-ADMIN-1. The retained
+  form is disabled in the admin page and requests no initial credentials.
+- `PATCH /api/admin/users/:id` requires optional role and/or isActive (at least
+  one) and integer expectedManagementVersion >= 0, with no other fields/query.
+  Self-demotion/deactivation is 409; all other valid existing-target updates,
+  including no-ops, are currently 503. Invalid data is 400; missing account 404.
+  No version matching, successful mutation or success audit is invented.
 - Authenticated `GET /api/experiments` is permitted for admins and returns the
   published catalogue; it excludes drafts, archived entries and management actions.
   Student-protected frontend detail/workspace routes are not linked from admin UI.
 
-### Missing admin user listing and detail contracts
+### Delivered admin user listing and detail; pending account writes
 
-Agree admin-only paginated directory and ID lookup, authoritative identity/role/
-active-state fields, supported role/status/search filters, stable sort, timestamps
-and total/cursor metadata. Specify invalid IDs, duplicates, forbidden/not-found
-responses and refresh behavior. Do not infer a user directory from audit actors.
-Before enabling PATCH controls, agree self-demotion/deactivation and last-admin
-safeguards, concurrency handling and intentional confirmation of privilege changes.
-No GET user listing route is assumed or requested by Stage 6.
+Directory and lookup now use U1/U2 filters and safe DTOs, ID-ascending sort and
+page/limit/total. Teacher role remains `faculty`; users are not inferred from audit
+actors. Account-change review is available, but Apply is disabled. Approve and
+implement shared transaction serialization, persisted versions, audit rollback and
+enrollment-race coordination before enabling guarded account writes. A count or
+process-local lock is not sufficient. See the Stage 6 report for precise limits.
 
-### Missing teacher management contracts
+### Delivered explicit teacher-cohort management
 
-Agree faculty-filtered directory/details, authorized cohort/class assignments,
-enrollment relationships and supported assignment mutations. Define whether teacher
-account creation alone has any teaching scope (none is inferred by the UI).
-Existing admin creation supports role faculty. Separate teacher-scoped enrollment
-APIs now establish a single student-teacher relationship; the frontend teacher
-selection and enrollment flow remains unimplemented. Class/cohort models are not supplied.
+Filter the directory to faculty, select an actual account and use the existing
+`/api/admin/teachers/:teacherId/students` list/enrollment and child detail/removal
+routes. Confirm removal explicitly; do not transfer ownership implicitly. Inactive
+teachers permit reviewing/removing assignments, not new enrollment. No class,
+invitation, admin academic-report or teacher impersonation feature is inferred.
 
 ### Missing experiment management contracts
 
@@ -218,23 +238,29 @@ to historical attempts/reports; audit behavior and safe allowed lab profiles.
 No frontend write should supply arbitrary lab images, commands or infrastructure
 configuration. Existing catalogue data is read-only; no CRUD routes are assumed.
 
-### Missing complete audit search
+### Delivered complete stored-audit search
 
-For activity beyond the most recent 20, agree admin-only server pagination,
-action/actor/resource/date filters, deterministic ordering and retention policy.
-The current client-side filters apply only to the fetched snapshot.
+`GET /api/admin/audit-events` now provides independent server pagination, exact
+action/actor/resource/date filters and createdAt/ID-descending ordering. Only safe
+structured changes are returned; raw Mixed metadata/IP/user-agent are excluded.
+The older client-side snapshot filters remain under an explicitly labeled overview
+sample and do not filter the full stored collection. No retention deletion is added.
 
 
 ## Final delivery boundary
 
 Implemented API consumers are the student dashboard/history, published catalogue
-and detail, existing lab/task/quiz/report flows, faculty/admin aggregates and admin
-account creation, faculty enrollment/list/detail/removal and student own enrollment.
+and detail, existing lab/task/quiz/report flows, faculty/admin aggregates,
+faculty enrollment/list/detail/removal and student own enrollment. The retained
+admin creation form is now disabled under the account-management gate.
 Stage 5 adds teacher student-history/report metadata/PDF reads and cohort experiment
 analytics through the faculty-only endpoints listed at the top of this document.
-PATCH user updates remain unexposed without reliable target
-selection. All requirements above are pending unless listed as a verified existing
+User directory/detail, admin teacher-cohort controls and full audit search are now
+implemented. Account creation and PATCH submission remain blocked by the reviewed
+atomic-management prerequisite despite reliable selection now existing.
+All requirements above are pending unless listed as a verified existing
 route; proposed contract descriptions do not imply server implementations.
 See `FRONTEND_DELIVERY_REVIEW.md` for test evidence and environment limitations.
 See `../docs/STAGE4A_ENROLLMENT_UI.md` for current local enrollment acceptance.
 See `../docs/STAGE5_TEACHER_MONITORING.md` for teacher academic monitoring acceptance.
+See `../docs/STAGE6_ADMIN_MANAGEMENT.md` for current admin acceptance and blockers.

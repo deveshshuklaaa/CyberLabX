@@ -1,5 +1,6 @@
 import React from 'react';
 import { ExternalLink, Mail, MapPin, Phone, ShieldCheck, Heart } from 'lucide-react';
+import { PortalNavigation } from './PortalNavigation';
 import { BrandLockup } from './BrandLockup';
 
 export const UniversityFooter: React.FC = () => {
@@ -25,36 +26,12 @@ export const UniversityFooter: React.FC = () => {
           {/* Column 2: Academic Practical Resources */}
           <div>
             <h3 className="text-sm font-bold uppercase tracking-wider text-white border-b border-white/20 pb-2 mb-4">
-              Student Resources
+              Portal Resources
             </h3>
-            <ul className="space-y-2.5 text-xs text-footer-text/85">
-              <li>
-                <a href="#available-experiments" className="hover:text-white transition-colors flex items-center gap-1.5">
-                  <span>Experiments Catalog</span>
-                </a>
-              </li>
-              <li>
-                <a href="#learning-progress" className="hover:text-white transition-colors flex items-center gap-1.5">
-                  <span>My Learning Progress</span>
-                </a>
-              </li>
-              <li>
-                <a href="#recent-experiments" className="hover:text-white transition-colors flex items-center gap-1.5">
-                  <span>Practical Attempt History</span>
-                </a>
-              </li>
-              <li>
-                <a href="#how-it-works" className="hover:text-white transition-colors flex items-center gap-1.5">
-                  <span>Virtual Lab Guidelines</span>
-                </a>
-              </li>
-              <li>
-                <span className="inline-flex items-center gap-1 text-[11px] text-white/60 bg-white/10 px-2 py-0.5 rounded">
-                  <ShieldCheck size={12} className="text-emerald-400" />
-                  Isolated Docker Containment
-                </span>
-              </li>
-            </ul>
+            <nav aria-label="Footer navigation" className="footer-navigation flex flex-col items-start gap-1">
+              <PortalNavigation />
+            </nav>
+            <p className="mt-4 text-xs flex items-center gap-2"><ShieldCheck size={14} aria-hidden="true" />Controlled learning environments</p>
           </div>
 
           {/* Column 3: University Links */}

@@ -5,14 +5,42 @@
 
 @layer base {
   body { @apply m-0 min-w-[320px] bg-canvas font-sans text-ink; }
-  button, input { font: inherit; }
+  button, input, select, textarea { font: inherit; }
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible { outline: 3px solid #094F9F; outline-offset: 3px; }
+  :where(h1, h2, h3) { overflow-wrap: anywhere; }
+  button { touch-action: manipulation; }
   a { @apply text-link; }
 }
 
 @layer components {
   .panel { @apply rounded-xl border border-line bg-surface shadow-sm; }
-  .button { @apply inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark active:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60; }
-  .button-secondary { @apply inline-flex items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 font-semibold text-ink transition hover:border-brand hover:bg-[#FDF4F4] hover:text-brand-dark; }
-  .field { @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15; }
+  .button { @apply inline-flex items-center justify-center min-h-11 rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-dark active:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-60; }
+  .button-secondary { @apply inline-flex items-center justify-center min-h-11 rounded-lg border border-line bg-surface px-4 py-2 font-semibold text-ink transition hover:border-brand hover:bg-[#FDF4F4] hover:text-brand-dark; }
+  .field { @apply w-full min-h-11 rounded-lg border border-line bg-surface px-3 py-2 text-ink outline-none placeholder:text-muted focus:border-brand focus:ring-2 focus:ring-brand/15; }
+  .page-heading { @apply border-b border-line pb-5; }
+  .page-title { @apply text-2xl sm:text-3xl font-bold tracking-tight text-ink; }
+  .page-description { @apply mt-2 max-w-3xl text-sm leading-relaxed text-muted; }
+  .eyebrow { @apply mb-2 text-xs font-semibold uppercase tracking-wider text-brand; }
+  .nav-link { @apply inline-flex min-h-11 items-center rounded-lg px-3 py-2 text-sm font-semibold text-ink hover:bg-brand/5 hover:text-brand; }
+  .nav-link-active { @apply bg-brand/5 text-brand ring-1 ring-inset ring-brand/20; }
+  .status-badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold; }
+  .status-success { @apply border-emerald-200 bg-emerald-50 text-emerald-800; }
+  .status-warning { @apply border-amber-200 bg-amber-50 text-amber-800; }
+  .status-danger { @apply border-rose-200 bg-rose-50 text-rose-800; }
+  .status-neutral { @apply border-slate-200 bg-slate-50 text-slate-700; }
+  .state-panel { @apply panel p-6 sm:p-8 text-center; }
+  .error-panel { @apply panel border-danger/30 bg-danger/5 p-6; }
+  .skip-link { @apply fixed left-4 top-4 z-50 -translate-y-24 rounded-lg bg-brand px-4 py-3 font-semibold text-white focus:translate-y-0; }
+  .footer-navigation .nav-link { @apply text-footer-text hover:bg-white/10 hover:text-white; }
+  .footer-navigation .nav-link-active { @apply bg-white/10 ring-white/30; }
   .label { @apply mb-1 block text-sm font-medium text-ink; }
+}
+
+/* A quiet technical grid keeps the institutional palette at the center. */
+.portal-content {
+  background-image: radial-gradient(#a8002c0c 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }

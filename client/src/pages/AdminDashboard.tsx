@@ -1,3 +1,5 @@
+import { PageHeading } from '../components/common/PageHeading';
+import { LoadingState, ErrorState } from '../components/common/QueryState';
 import { useQuery } from '@tanstack/react-query';
 import { Activity, ShieldCheck, UserCheck, Users } from 'lucide-react';
 import { api } from '../services/api';
@@ -9,31 +11,19 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 export function AdminDashboard() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['admin-dashboard'],
     queryFn: () => api.get('/admin/dashboard').then(r => r.data),
   });
 
   return (
     <div className="space-y-8">
-      {/* Top Banner */}
-      <div className="border-b border-line pb-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-brand">
-          Somaiya Vidyavihar University · Platform Administration
-        </span>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-black text-ink uppercase font-sans">
-          System &amp; Laboratory Administration
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Platform-level metrics, active laboratory sessions, and verifiable audit logging.
-        </p>
-      </div>
+      <PageHeading title="System &amp; Laboratory Administration" description="Platform metrics and recent security audit events." eyebrow="Somaiya Vidyavihar University | Platform Administration" />
 
       {isLoading ? (
-        <div className="panel p-10 text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand border-t-transparent mb-3" />
-          <p className="text-sm text-muted">Loading administrative data…</p>
-        </div>
+        <LoadingState message="Loading administrative data..." />
+      ) : isError || !data ? (
+        <ErrorState message="Unable to load dashboard data." onRetry={() => { void refetch(); }} retrying={isFetching} />
       ) : (
         <>
           <div className="grid gap-5 sm:grid-cols-3">

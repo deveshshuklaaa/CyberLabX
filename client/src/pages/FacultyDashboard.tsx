@@ -1,3 +1,5 @@
+import { PageHeading } from '../components/common/PageHeading';
+import { LoadingState, ErrorState } from '../components/common/QueryState';
 import { useQuery } from '@tanstack/react-query';
 import { Award, BookOpen, FileText, Users } from 'lucide-react';
 import { api } from '../services/api';
@@ -10,31 +12,19 @@ const ICONS: Record<string, React.ReactNode> = {
 };
 
 export function FacultyDashboard() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ['faculty-dashboard'],
     queryFn: () => api.get('/faculty/dashboard').then(r => r.data),
   });
 
   return (
     <div className="space-y-8">
-      {/* Top Banner */}
-      <div className="border-b border-line pb-4">
-        <span className="text-xs font-bold uppercase tracking-wider text-brand">
-          Somaiya Vidyavihar University · Faculty Portal
-        </span>
-        <h1 className="mt-1 text-2xl sm:text-3xl font-black text-ink uppercase font-sans">
-          Faculty Laboratory Analytics
-        </h1>
-        <p className="mt-1 text-sm text-muted">
-          Aggregated cohort progress metrics and evaluation report status across all students.
-        </p>
-      </div>
+      <PageHeading title="Faculty Laboratory Analytics" description="Aggregated cohort progress metrics and evaluation report status across all students." eyebrow="Somaiya Vidyavihar University | Faculty Portal" />
 
       {isLoading ? (
-        <div className="panel p-10 text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-brand border-t-transparent mb-3" />
-          <p className="text-sm text-muted">Loading cohort metrics…</p>
-        </div>
+        <LoadingState message="Loading cohort metrics..." />
+      ) : isError || !data ? (
+        <ErrorState message="Unable to load dashboard data." onRetry={() => { void refetch(); }} retrying={isFetching} />
       ) : (
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {Object.entries(data.metrics).map(([key, value]) => (

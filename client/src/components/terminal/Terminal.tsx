@@ -46,7 +46,12 @@ export function Terminal({ labSessionId, targetHostname, onOutput, onConnectionC
     window.addEventListener('resize', resize);
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(resize) : undefined;
     observer?.observe(host.current);
-    return () => { observer?.disconnect(); input.dispose(); window.removeEventListener('resize', resize); socket.disconnect(); term.dispose(); };
+    return () => {
+      observer?.disconnect(); input.dispose(); window.removeEventListener('resize', resize); socket.disconnect();
+      // xterm 5.5 queues viewport resets in animation frames. Drain pending writes
+      // and that frame before disposing the renderer those callbacks still use.
+      term.write('', () => { window.requestAnimationFrame(() => term.dispose()); });
+    };
   }, [labSessionId, onOutput, targetHostname, onConnectionChange]);
-  return <div ref={host} className="h-full min-h-[360px] sm:min-h-[430px] w-full overflow-hidden rounded-lg p-2 sm:p-3" aria-label="Interactive lab terminal" />;
+  return <div ref={host} className="h-[360px] sm:h-[430px] w-full overflow-hidden rounded-lg p-2 sm:p-3" aria-label="Interactive lab terminal" />;
 }

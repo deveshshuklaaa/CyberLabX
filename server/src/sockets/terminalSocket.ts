@@ -12,7 +12,7 @@ import { openTerminal } from '../services/vm/manager.js';
 /*  Per-session terminal state                                        */
 /* ------------------------------------------------------------------ */
 interface TerminalEntry {
-    resize?: (cols: number, rows: number) => void;
+    resize?: (cols: number, rows: number) => void | Promise<unknown>;
     captureRevision: number;
     stream: NodeJS.WritableStream;
     sockets: Set<string>;
@@ -154,8 +154,10 @@ export function attachTerminalSocket(io: Server) {
                 const item = streams.get(payload.labSessionId);
                 if (!item?.sockets.has(socket.id)) return;
                 if (!item.resize) return;
-                await authorizeVm(payload.labSessionId, String(socket.data.user._id));
-                item.resize?.(Math.min(300, Math.max(20, payload.cols!)), Math.min(150, Math.max(5, payload.rows!)));
+                const session = await LabSession.findOne({ _id: payload.labSessionId, studentId: socket.data.user._id, status: 'running' });
+                if (!session || session.expiresAt <= new Date()) return;
+                if (session.vmAttemptId) await authorizeVm(payload.labSessionId, String(socket.data.user._id));
+                await item.resize(Math.min(300, Math.max(20, payload.cols!)), Math.min(150, Math.max(5, payload.rows!)));
             } catch { socket.emit('terminal:error', { message: 'Terminal session is unavailable.' }); }
         });
 

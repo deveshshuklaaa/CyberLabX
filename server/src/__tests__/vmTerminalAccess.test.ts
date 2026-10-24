@@ -15,6 +15,7 @@ import { User } from '../models/User.js';
 import { LabSession } from '../models/LabSession.js';
 import { getShellStream } from '../services/labEngine.js';
 import { openTerminal } from '../services/vm/manager.js';
+import { authorizeVm } from '../services/vm/access.js';
 import { attachTerminalSocket } from '../sockets/terminalSocket.js';
 import { env } from '../config/env.js';
 beforeEach(() => {
@@ -56,13 +57,23 @@ it('rejects a foreign-owned or expired session before opening a VM terminal', as
 it('still opens Docker terminals through the existing shell path', async () => {
   const id = '64b000000000000000000002'; const output = new PassThrough(); const write = vi.fn();
   vi.mocked(LabSession.findOne).mockResolvedValue({ _id: id, attemptId: id, studentContainerId: 'docker-kali', expiresAt: new Date(Date.now() + 60000) } as any);
-  vi.mocked(getShellStream).mockResolvedValue({ input: { write }, output } as any);
+  const resize = vi.fn().mockResolvedValue(undefined);
+  vi.mocked(getShellStream).mockResolvedValue({ input: { write }, output, resize } as any);
   const f = await fixture();
   try {
     await new Promise<void>((resolve, reject) => { f.socket.once('connect', resolve); f.socket.once('connect_error', reject); });
     const ready = new Promise<void>(resolve => f.socket.once('terminal:ready', resolve));
     f.socket.emit('terminal:join', { labSessionId: id }); await ready;
     expect(getShellStream).toHaveBeenCalledWith('docker-kali', undefined);
+    f.socket.emit('terminal:resize', { labSessionId: id, cols: 999, rows: 1 });
+    await vi.waitFor(() => expect(resize).toHaveBeenCalledWith(300, 5));
+    expect(authorizeVm).not.toHaveBeenCalled();
+    resize.mockClear();
+    vi.mocked(LabSession.findOne).mockResolvedValue(null);
+    f.socket.emit('terminal:resize', { labSessionId: id, cols: 80, rows: 24 });
+    await new Promise(resolve => setTimeout(resolve, 50));
+    expect(resize).not.toHaveBeenCalled();
+    vi.mocked(LabSession.findOne).mockResolvedValue({ _id: id, attemptId: id, studentContainerId: 'docker-kali', expiresAt: new Date(Date.now() + 60000) } as any);
     expect(openTerminal).not.toHaveBeenCalled();
     f.socket.emit('terminal:input', { labSessionId: id, data: 'pwd' });
     await vi.waitFor(() => expect(write).toHaveBeenCalledWith('pwd'));

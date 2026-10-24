@@ -417,7 +417,7 @@ export async function getShellStream(containerId: string, user?: string) {
   input.on('end', () => output.end());
   input.on('close', () => output.end());
   input.on('error', error => output.destroy(error));
-  return { input, output };
+  return { input, output, resize: (cols: number, rows: number) => exec.resize({ w: cols, h: rows }) };
 }
 
 /* ------------------------------------------------------------------ */

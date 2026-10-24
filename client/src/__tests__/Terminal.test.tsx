@@ -32,6 +32,13 @@ vi.mock('socket.io-client', () => ({
 import { Terminal } from '../components/terminal/Terminal';
 
 describe('Terminal lab metadata', () => {
+  it('bounds terminal height independently of PTY content so fitting cannot grow its parent', () => {
+    const { getByLabelText } = render(<Terminal labSessionId="lab-size" targetHostname="target" />);
+    const host = getByLabelText('Interactive lab terminal');
+    expect(host.classList.contains('h-[360px]')).toBe(true);
+    expect(host.classList.contains('sm:h-[430px]')).toBe(true);
+    expect(host.classList.contains('h-full')).toBe(false);
+  });
   beforeEach(() => { vi.clearAllMocks(); });
   it('shows the experiment target hostname in the connection banner', () => {
     render(<Terminal labSessionId="lab-1" targetHostname="configured-target" onOutput={() => {}} />);
@@ -68,7 +75,14 @@ describe('Terminal lab metadata', () => {
     act(() => { mocks.handlers['terminal:ready']({ restored: true }); });
     mocks.socketEmit.mockClear(); fireEvent(window, new Event('resize'));
     expect(mocks.socketEmit).toHaveBeenCalledWith('terminal:resize', expect.objectContaining({ labSessionId: 'lab-1' }));
-    unmount(); expect(mocks.disconnect).toHaveBeenCalled(); expect(mocks.dispose).toHaveBeenCalled(); expect(mocks.inputDispose).toHaveBeenCalled();
+    const frame = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+    unmount(); expect(mocks.disconnect).toHaveBeenCalled(); expect(mocks.inputDispose).toHaveBeenCalled();
+    expect(mocks.dispose).not.toHaveBeenCalled();
+    const [, drained] = mocks.write.mock.calls.at(-1)!;
+    expect(drained).toBeTypeOf('function'); drained();
+    expect(mocks.dispose).not.toHaveBeenCalled();
+    frame.mock.calls.at(-1)![0](0);
+    expect(mocks.dispose).toHaveBeenCalledOnce(); frame.mockRestore();
   });
   it('reports connection failures and terminal errors without claiming connection success', () => {
     const status = vi.fn(); render(<Terminal labSessionId="lab-1" targetHostname="target" onOutput={() => {}} onConnectionChange={status} />);

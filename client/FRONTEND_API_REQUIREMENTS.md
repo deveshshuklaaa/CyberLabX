@@ -1,5 +1,26 @@
 # Frontend API integration status and remaining requirements
 
+## Stage 7 current product status
+
+Implemented locally: C1 catalogue category projection and P1/P2/P3 additive
+student academic reads from the reviewed plan. Published categories are actual
+stored values (trimmed, null when absent); no editorial categories are invented.
+Student summaries display raw points. Current-catalogue completion uses the new
+published intersection, not all historical completions. Individual percentages
+use only consistent persisted report maxima; legacy maxima/task totals stay unknown.
+
+Student history/recent activity expose score/task fields and file-checked report
+availability. Student report metadata includes `available`; student downloads
+remain student-only and now share the contained, attempt-bound file opener used
+by teacher downloads. Inline PDF failure/retry, account-keyed student queries,
+cache cancellation/clearing on confirmed logout/login, current-session 401 handling
+and honest failed-logout behavior are implemented. Profile remains read-only using
+the existing authenticated identity and own-enrollment contract.
+
+See [Stage 7 product acceptance and exact remaining manual checks](../docs/STAGE7_PRODUCT_COMPLETION.md).
+No new model, grading, terminal transport, account-edit or experiment-write API is
+introduced. Admin account writes retain the Stage 6 gate below.
+
 ## Stage 6 admin delivery and account-write blocker
 
 Implemented locally: admin-only `GET /api/admin/users`, `GET /api/admin/users/:id`
@@ -51,9 +72,9 @@ rebuilt. The Stage 5 teacher reads above are implemented under the Stage 5 reque
 Stage 6 admin reads/cohort UI are implemented as listed above. Other proposals
 retain their separate approval gates.
 
-Remaining necessary proposals: approved atomic account management, persisted
-management versions, category projection and
-truthful additive score/progress fields on existing student reads. Student-only
+Remaining necessary proposals: approved atomic account management and persisted
+management versions. Catalogue category and truthful additive student score/progress
+fields are now implemented. Student-only
 attempt/report APIs stay student-only; admin teacher enrollment keeps explicit
 teacher-scoped routes. PATCH now rejects self-demotion/deactivation and fails all
 other account updates closed. A successful versioned writer preserving the global
@@ -62,10 +83,10 @@ last-admin invariant still requires the approved atomic design; it is not deploy
 Optional: name-only self-service profile correction and limited admin editorial/
 status management if the demo scope explicitly requires them. Full assessment
 authoring, new lab configuration and password recovery are outside this plan.
-Remaining student `%` and `/100` displays must not be mistaken for verified
-normalized scores: the current backend records raw points, including 75-point
-experiments. Historical maxima must come from persisted reports or approved
-attempt snapshots, not today's mutable experiment definition.
+Stage 7 removed assumed student `%` and `/100` score displays. Summaries are raw
+points; individual normalized scores require a consistent recorded report maximum.
+Historical task totals remain unknown without future approved snapshots; today's
+mutable experiment definition is never substituted for a historical denominator.
 
 ## Verified faculty overview contract
 
@@ -264,3 +285,4 @@ See `FRONTEND_DELIVERY_REVIEW.md` for test evidence and environment limitations.
 See `../docs/STAGE4A_ENROLLMENT_UI.md` for current local enrollment acceptance.
 See `../docs/STAGE5_TEACHER_MONITORING.md` for teacher academic monitoring acceptance.
 See `../docs/STAGE6_ADMIN_MANAGEMENT.md` for current admin acceptance and blockers.
+See `../docs/STAGE7_PRODUCT_COMPLETION.md` for current product verification/manual checks.

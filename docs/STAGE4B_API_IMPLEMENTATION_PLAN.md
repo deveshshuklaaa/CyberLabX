@@ -12,6 +12,11 @@ gate. No guard document, model version or topology change is introduced. Thus
 managementVersion remains explicitly null and POST/PATCH cannot succeed; see
 [STAGE6_ADMIN_MANAGEMENT.md](STAGE6_ADMIN_MANAGEMENT.md). Other proposals retain
 their review gates. The detailed sections below remain the historical design.
+Stage 7 subsequently implements C1 and the additive P1/P2/P3 student reads, plus
+student report availability and contained downloads. It does not introduce attempt
+snapshots, grading changes, profile mutations or experiment management. See
+[STAGE7_PRODUCT_COMPLETION.md](STAGE7_PRODUCT_COMPLETION.md) for current semantics,
+rendered verification and the manual checks still required.
 Stage 4A enrollment remains complete and unchanged. No application, schema,
 database, infrastructure, authentication or remote changes are made in Stage 4B.
 
